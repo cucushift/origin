@@ -8,20 +8,13 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/plugins"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
-	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
-	appsclient "github.com/openshift/origin/pkg/apps/generated/internalclientset"
 	authorizationapi "github.com/openshift/origin/pkg/authorization/apis/authorization"
 	authorizationclientinternal "github.com/openshift/origin/pkg/authorization/generated/internalclientset"
-	authorizationreaper "github.com/openshift/origin/pkg/authorization/reaper"
-	buildapi "github.com/openshift/origin/pkg/build/apis/build"
-	buildclientinternal "github.com/openshift/origin/pkg/build/generated/internalclientset"
 	oauthclientinternal "github.com/openshift/origin/pkg/oauth/generated/internalclientset"
-	buildcmd "github.com/openshift/origin/pkg/oc/cli/builds"
-	deploymentcmd "github.com/openshift/origin/pkg/oc/cli/deploymentconfigs"
+	"github.com/openshift/origin/pkg/oc/admin/prune/authprune"
 	securityclientinternal "github.com/openshift/origin/pkg/security/generated/internalclientset"
 	userapi "github.com/openshift/origin/pkg/user/apis/user"
 	userclientinternal "github.com/openshift/origin/pkg/user/generated/internalclientset"
-	authenticationreaper "github.com/openshift/origin/pkg/user/reaper"
 )
 
 type ring2Factory struct {
@@ -71,34 +64,20 @@ func (f *ring2Factory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error)
 	}
 
 	gk := mapping.GroupVersionKind.GroupKind()
-	switch {
-	case appsapi.IsKindOrLegacy("DeploymentConfig", gk):
-		kc, err := f.clientAccessFactory.ClientSet()
+	switch gk {
+	case authorizationapi.Kind("Role"):
+		kubeClient, err := f.clientAccessFactory.KubernetesClientSet()
 		if err != nil {
 			return nil, err
 		}
-		config, err := f.clientAccessFactory.ClientConfig()
+		return authprune.NewRoleReaper(kubeClient.RbacV1(), kubeClient.RbacV1()), nil
+	case authorizationapi.Kind("ClusterRole"):
+		kubeClient, err := f.clientAccessFactory.KubernetesClientSet()
 		if err != nil {
 			return nil, err
 		}
-		scaleClient, err := f.ScaleClient()
-		if err != nil {
-			return nil, err
-		}
-		return deploymentcmd.NewDeploymentConfigReaper(appsclient.NewForConfigOrDie(config), kc, scaleClient), nil
-	case authorizationapi.IsKindOrLegacy("Role", gk):
-		authClient, err := authorizationclientinternal.NewForConfig(clientConfig)
-		if err != nil {
-			return nil, err
-		}
-		return authorizationreaper.NewRoleReaper(authClient.Authorization(), authClient.Authorization()), nil
-	case authorizationapi.IsKindOrLegacy("ClusterRole", gk):
-		authClient, err := authorizationclientinternal.NewForConfig(clientConfig)
-		if err != nil {
-			return nil, err
-		}
-		return authorizationreaper.NewClusterRoleReaper(authClient.Authorization(), authClient.Authorization(), authClient.Authorization()), nil
-	case userapi.IsKindOrLegacy("User", gk):
+		return authprune.NewClusterRoleReaper(kubeClient.RbacV1(), kubeClient.RbacV1(), kubeClient.RbacV1()), nil
+	case userapi.Kind("User"):
 		userClient, err := userclientinternal.NewForConfig(clientConfig)
 		if err != nil {
 			return nil, err
@@ -115,15 +94,13 @@ func (f *ring2Factory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error)
 		if err != nil {
 			return nil, err
 		}
-		return authenticationreaper.NewUserReaper(
+		return authprune.NewUserReaper(
 			userClient,
-			userClient,
-			authClient,
 			authClient,
 			oauthClient,
 			securityClient.Security().SecurityContextConstraints(),
 		), nil
-	case userapi.IsKindOrLegacy("Group", gk):
+	case userapi.Kind("Group"):
 		userClient, err := userclientinternal.NewForConfig(clientConfig)
 		if err != nil {
 			return nil, err
@@ -136,18 +113,11 @@ func (f *ring2Factory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error)
 		if err != nil {
 			return nil, err
 		}
-		return authenticationreaper.NewGroupReaper(
+		return authprune.NewGroupReaper(
 			userClient,
-			authClient,
 			authClient,
 			securityClient.Security().SecurityContextConstraints(),
 		), nil
-	case buildapi.IsKindOrLegacy("BuildConfig", gk):
-		config, err := f.clientAccessFactory.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-		return buildcmd.NewBuildConfigReaper(buildclientinternal.NewForConfigOrDie(config)), nil
 	}
 	return f.kubeBuilderFactory.Reaper(mapping)
 }

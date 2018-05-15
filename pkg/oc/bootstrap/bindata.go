@@ -1246,7 +1246,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "2.4"
+              "name": "2.5"
             },
             "name": "latest",
             "referencePolicy": {
@@ -1332,6 +1332,23 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Ruby 2.5 applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-ruby-container/blob/master/2.5/README.md.",
+              "iconClass": "icon-ruby",
+              "openshift.io/display-name": "Ruby 2.5",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/sclorg/ruby-ex.git",
+              "supports": "ruby:2.5,ruby",
+              "tags": "builder,ruby",
+              "version": "2.5"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/centos/ruby-25-centos7:latest"
+            },
+            "name": "2.5"
           }
         ]
       }
@@ -2088,6 +2105,25 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Node.js 8 applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/bucharest-gold/centos7-s2i-nodejs.",
+              "iconClass": "icon-nodejs",
+              "openshift.io/display-name": "OpenShift Application Runtimes Node.js 8",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/nodejs-ex.git",
+              "tags": "builder,nodejs",
+              "version": "8"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhoar-nodejs/nodejs-8"
+            },
+            "name": "8-RHOAR",
+            "referencePolicy": {
+              "type": "Local"
+            }
           }
         ]
       }
@@ -2606,7 +2642,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "2.4"
+              "name": "2.5"
             },
             "name": "latest",
             "referencePolicy": {
@@ -2692,6 +2728,23 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Ruby 2.5 applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-ruby-container/blob/master/2.5/README.md.",
+              "iconClass": "icon-ruby",
+              "openshift.io/display-name": "Ruby 2.5",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/sclorg/ruby-ex.git",
+              "supports": "ruby:2.5,ruby",
+              "tags": "builder,ruby",
+              "version": "2.5"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhscl/ruby-25-rhel7:latest"
+            },
+            "name": "2.5"
           }
         ]
       }
@@ -7641,7 +7694,6 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
             },
             "stringData": {
                 "cakephp-secret-token": "${CAKEPHP_SECRET_TOKEN}",
-                "cakephp-security-cipher-seed": "${CAKEPHP_SECURITY_CIPHER_SEED}",
                 "cakephp-security-salt": "${CAKEPHP_SECURITY_SALT}",
                 "database-password": "${DATABASE_PASSWORD}",
                 "database-user": "${DATABASE_USER}"
@@ -7712,7 +7764,7 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
                     }
                 },
                 "postCommit": {
-                    "script": "./lib/Cake/Console/cake test app AllTests"
+                    "script": "./vendor/bin/phpunit"
                 },
                 "source": {
                     "contextDir": "${CONTEXT_DIR}",
@@ -7732,7 +7784,7 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "php:7.0",
+                            "name": "php:${PHP_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -7838,15 +7890,6 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
                                         "valueFrom": {
                                             "secretKeyRef": {
                                                 "key": "cakephp-security-salt",
-                                                "name": "${NAME}"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "CAKEPHP_SECURITY_CIPHER_SEED",
-                                        "valueFrom": {
-                                            "secretKeyRef": {
-                                                "key": "cakephp-security-cipher-seed",
                                                 "name": "${NAME}"
                                             }
                                         }
@@ -8088,6 +8131,13 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
             "value": "openshift"
         },
         {
+            "description": "Version of PHP image to be used (5.6, 7.0, 7.1 or latest).",
+            "displayName": "PHP Version",
+            "name": "PHP_VERSION",
+            "required": true,
+            "value": "7.1"
+        },
+        {
             "description": "Maximum amount of memory the CakePHP container can use.",
             "displayName": "Memory Limit",
             "name": "MEMORY_LIMIT",
@@ -8184,13 +8234,6 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
             "name": "CAKEPHP_SECURITY_SALT"
         },
         {
-            "description": "Security cipher seed for session hash.",
-            "displayName": "CakePHP Security Cipher Seed",
-            "from": "[0-9]{30}",
-            "generate": "expression",
-            "name": "CAKEPHP_SECURITY_CIPHER_SEED"
-        },
-        {
             "description": "How often to check script timestamps for updates, in seconds. 0 will result in OPcache checking for updates on every request.",
             "displayName": "OPcache Revalidation Frequency",
             "name": "OPCACHE_REVALIDATE_FREQ",
@@ -8251,7 +8294,6 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
             },
             "stringData": {
                 "cakephp-secret-token": "${CAKEPHP_SECRET_TOKEN}",
-                "cakephp-security-cipher-seed": "${CAKEPHP_SECURITY_CIPHER_SEED}",
                 "cakephp-security-salt": "${CAKEPHP_SECURITY_SALT}",
                 "database-password": "${DATABASE_PASSWORD}",
                 "database-user": "${DATABASE_USER}"
@@ -8322,7 +8364,7 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
                     }
                 },
                 "postCommit": {
-                    "script": "./lib/Cake/Console/cake test app AllTests"
+                    "script": "./vendor/bin/phpunit"
                 },
                 "source": {
                     "contextDir": "${CONTEXT_DIR}",
@@ -8342,7 +8384,7 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "php:7.0",
+                            "name": "php:${PHP_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -8448,15 +8490,6 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
                                         "valueFrom": {
                                             "secretKeyRef": {
                                                 "key": "cakephp-security-salt",
-                                                "name": "${NAME}"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "CAKEPHP_SECURITY_CIPHER_SEED",
-                                        "valueFrom": {
-                                            "secretKeyRef": {
-                                                "key": "cakephp-security-cipher-seed",
                                                 "name": "${NAME}"
                                             }
                                         }
@@ -8679,6 +8712,13 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
             "value": "openshift"
         },
         {
+            "description": "Version of PHP image to be used (5.6, 7.0, 7.1 or latest).",
+            "displayName": "PHP Version",
+            "name": "PHP_VERSION",
+            "required": true,
+            "value": "7.1"
+        },
+        {
             "description": "Maximum amount of memory the CakePHP container can use.",
             "displayName": "Memory Limit",
             "name": "MEMORY_LIMIT",
@@ -8766,13 +8806,6 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
             "from": "[a-zA-Z0-9]{40}",
             "generate": "expression",
             "name": "CAKEPHP_SECURITY_SALT"
-        },
-        {
-            "description": "Security cipher seed for session hash.",
-            "displayName": "CakePHP Security Cipher Seed",
-            "from": "[0-9]{30}",
-            "generate": "expression",
-            "name": "CAKEPHP_SECURITY_CIPHER_SEED"
         },
         {
             "description": "How often to check script timestamps for updates, in seconds. 0 will result in OPcache checking for updates on every request.",
@@ -10002,7 +10035,7 @@ var _examplesQuickstartsDjangoPostgresqlPersistentJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "python:3.5",
+                            "name": "python:${PYTHON_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -10298,7 +10331,7 @@ var _examplesQuickstartsDjangoPostgresqlPersistentJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "postgresql:9.5",
+                                "name": "postgresql:${POSTGRESQL_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -10325,6 +10358,20 @@ var _examplesQuickstartsDjangoPostgresqlPersistentJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of Python image to be used (3.4, 3.5, 3.6 or latest).",
+            "displayName": "Version of Python Image",
+            "name": "PYTHON_VERSION",
+            "required": true,
+            "value": "3.6"
+        },
+        {
+            "description": "Version of PostgreSQL image to be used (9.4, 9.5, 9.6 or latest).",
+            "displayName": "Version of PostgreSQL Image",
+            "name": "POSTGRESQL_VERSION",
+            "required": true,
+            "value": "9.6"
         },
         {
             "description": "Maximum amount of memory the Django container can use.",
@@ -10564,7 +10611,7 @@ var _examplesQuickstartsDjangoPostgresqlJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "python:3.5",
+                            "name": "python:${PYTHON_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -10841,7 +10888,7 @@ var _examplesQuickstartsDjangoPostgresqlJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "postgresql:9.5",
+                                "name": "postgresql:${POSTGRESQL_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -10868,6 +10915,20 @@ var _examplesQuickstartsDjangoPostgresqlJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of Python image to be used (3.4, 3.5, 3.6 or latest).",
+            "displayName": "Version of Python Image",
+            "name": "PYTHON_VERSION",
+            "required": true,
+            "value": "3.6"
+        },
+        {
+            "description": "Version of PostgreSQL image to be used (9.4, 9.5, 9.6 or latest).",
+            "displayName": "Version of PostgreSQL Image",
+            "name": "POSTGRESQL_VERSION",
+            "required": true,
+            "value": "9.6"
         },
         {
             "description": "Maximum amount of memory the Django container can use.",
@@ -12627,7 +12688,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "nodejs:6",
+                            "name": "nodejs:${NODEJS_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -12723,7 +12784,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                                 "image": " ",
                                 "livenessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 30,
@@ -12737,7 +12798,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                                 ],
                                 "readinessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 3,
@@ -12930,7 +12991,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "mongodb:3.2",
+                                "name": "mongodb:${MONGODB_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -12957,6 +13018,20 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of NodeJS image to be used (6, 8, or latest).",
+            "displayName": "Version of NodeJS Image",
+            "name": "NODEJS_VERSION",
+            "required": true,
+            "value": "8"
+        },
+        {
+            "description": "Version of MongoDB image to be used (3.2, 3.4, or latest).",
+            "displayName": "Version of MongoDB Image",
+            "name": "MONGODB_VERSION",
+            "required": true,
+            "value": "3.4"
         },
         {
             "description": "Maximum amount of memory the Node.js container can use.",
@@ -13193,7 +13268,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "nodejs:6",
+                            "name": "nodejs:${NODEJS_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -13289,7 +13364,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                                 "image": " ",
                                 "livenessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 30,
@@ -13303,7 +13378,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                                 ],
                                 "readinessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 3,
@@ -13479,7 +13554,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "mongodb:3.2",
+                                "name": "mongodb:${MONGODB_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -13506,6 +13581,20 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of NodeJS image to be used (6, 8, or latest).",
+            "displayName": "Version of NodeJS Image",
+            "name": "NODEJS_VERSION",
+            "required": true,
+            "value": "8"
+        },
+        {
+            "description": "Version of MongoDB image to be used (3.2, 3.4, or latest).",
+            "displayName": "Version of MongoDB Image",
+            "name": "MONGODB_VERSION",
+            "required": true,
+            "value": "3.4"
         },
         {
             "description": "Maximum amount of memory the Node.js container can use.",
@@ -15781,8 +15870,9 @@ objects:
   roleRef:
     kind: ClusterRole
     name: servicecatalog-serviceclass-viewer
-  groupNames:
-  - system:authenticated
+  subjects:
+  - kind: Group
+    name: system:authenticated
 
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRole
@@ -15817,6 +15907,15 @@ objects:
     - ""
     resources:
     - namespaces
+    verbs:
+    - list
+    - watch
+    - get
+  - apiGroups:
+    - "admissionregistration.k8s.io"
+    resources:
+    - validatingwebhookconfigurations
+    - mutatingwebhookconfigurations
     verbs:
     - list
     - watch
@@ -15932,13 +16031,13 @@ objects:
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
   metadata:
-    name: endpoint-accessor
+    name: configmap-accessor
     namespace: ${KUBE_SERVICE_CATALOG_NAMESPACE}
   rules:
   - apiGroups:
     - ""
     resources:
-    - endpoints
+    - configmaps
     verbs:
     - list
     - watch
@@ -15947,13 +16046,38 @@ objects:
     - update
 
 - apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: cluster-info-configmap
+    namespace: ${KUBE_SERVICE_CATALOG_NAMESPACE}
+  rules:
+  - apiGroups:     [""]
+    resources:     ["configmaps"]
+    resourceNames: ["cluster-info"]
+    verbs:         ["get","create","list","watch","update"]
+
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
-    name: endpointer-accessor-binding
+    name: cluster-info-configmap-binding
+    namespace: ${KUBE_SERVICE_CATALOG_NAMESPACE}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: cluster-info-configmap
+  subjects:
+  - kind: ServiceAccount
+    namespace: ${KUBE_SERVICE_CATALOG_NAMESPACE}
+    name: service-catalog-controller
+
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: configmap-accessor-binding
     namespace: ${KUBE_SERVICE_CATALOG_NAMESPACE}
   roleRef:
     kind: Role
-    name: endpoint-accessor
+    name: configmap-accessor
   subjects:
   - kind: ServiceAccount
     namespace: ${KUBE_SERVICE_CATALOG_NAMESPACE}
@@ -16056,7 +16180,7 @@ objects:
           - service-catalog
           args:
           - apiserver
-          - --admission-control
+          - --enable-admission-plugins
           - KubernetesNamespaceLifecycle,DefaultServicePlan,ServiceBindingsLifecycle,ServicePlanChangeValidator,BrokerAuthSarCheck
           - --storage-type
           - etcd
@@ -16085,7 +16209,7 @@ objects:
         - env:
           - name: ETCD_DATA_DIR
             value: /data-dir
-          image: quay.io/coreos/etcd
+          image: quay.io/coreos/etcd:v3.3
           imagePullPolicy: IfNotPresent
           name: etcd
           resources: {}
@@ -16161,6 +16285,8 @@ objects:
           - "3"
           - --leader-election-namespace
           - kube-service-catalog
+          - --leader-elect-resource-lock
+          - configmaps
           - --broker-relist-interval
           - "5m"
           - --feature-gates
@@ -16271,7 +16397,8 @@ spec:
   hostNetwork: true
   containers:
   - name: etcd
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     workingDir: /var/lib/etcd
     command: ["/bin/bash", "-c"]
     args:
@@ -16323,7 +16450,8 @@ spec:
   hostNetwork: true
   containers:
   - name: api
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     command: ["/bin/bash", "-c"]
     args:
     - |
@@ -16357,7 +16485,8 @@ spec:
       path: /etc/origin/cloudprovider
   - name: master-data
     hostPath:
-      path: /var/lib/origin`)
+      path: /var/lib/origin
+`)
 
 func installKubeApiserverApiserverYamlBytes() ([]byte, error) {
 	return _installKubeApiserverApiserverYaml, nil
@@ -16387,7 +16516,8 @@ spec:
   hostNetwork: true
   containers:
   - name: controllers
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     command: ["hyperkube", "kube-controller-manager"]
     args:
     - "--enable-dynamic-provisioning=true"
@@ -16426,7 +16556,8 @@ spec:
       path: /path/to/master/config-dir
   - name: master-cloud-provider
     hostPath:
-      path: /etc/origin/cloudprovider`)
+      path: /etc/origin/cloudprovider
+`)
 
 func installKubeControllerManagerKubeControllerManagerYamlBytes() ([]byte, error) {
 	return _installKubeControllerManagerKubeControllerManagerYaml, nil
@@ -16452,6 +16583,8 @@ parameters:
   value: kube-dns
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: LOGLEVEL
   value: "0"
 - name: KUBEDNS_CONFIG_HOST_PATH
@@ -16487,7 +16620,8 @@ objects:
         containers:
         - name: kube-proxy
           image: ${IMAGE}
-          command: ["openshift", "start", "node"]
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
+          command: ["openshift", "start", "network"]
           args:
           - "--enable=dns"
           - "--config=/etc/origin/node/node-config.yaml"
@@ -16548,7 +16682,9 @@ metadata:
   name: kube-proxy
 parameters:
 - name: IMAGE
-  value: openshift/origin-control-plane:latest
+  value: openshift/origin-control-plane
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: kube-proxy
 - name: LOGLEVEL
@@ -16598,7 +16734,8 @@ objects:
         containers:
         - name: kube-proxy
           image: ${IMAGE}
-          command: ["openshift", "start", "node"]
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
+          command: ["openshift", "start", "network"]
           args:
           - "--enable=proxy"
           - "--listen=https://0.0.0.0:8444"
@@ -16644,7 +16781,8 @@ spec:
   hostNetwork: true
   containers:
   - name: scheduler
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     command: ["hyperkube", "kube-scheduler"]
     args:
     - "--leader-elect=true"
@@ -16694,6 +16832,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: openshift-apiserver
 - name: LOGLEVEL
@@ -16729,7 +16869,7 @@ objects:
         containers:
         - name: apiserver
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           env:
           - name: ADDITIONAL_ALLOWED_REGISTRIES
             value: registry.centos.org
@@ -17111,6 +17251,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: openshift-controller-manager
 - name: LOGLEVEL
@@ -17147,7 +17289,7 @@ objects:
         containers:
         - name: c
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command: ["hypershift", "openshift-controller-manager"]
           args:
           - "--config=/etc/origin/master/master-config.yaml"
@@ -17241,7 +17383,9 @@ var _installOpenshiftWebConsoleOperatorInstallYaml = []byte(`apiVersion: templat
 kind: Template
 parameters:
 - name: IMAGE
-  value: openshift/origin:latest
+  value: openshift/origin-hypershift:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   # This namespace must not be changed.
   value: openshift-core-operators
@@ -17267,6 +17411,8 @@ objects:
       kind: OpenShiftWebConsoleConfig
       plural: openshiftwebconsoleconfigs
       singular: openshiftwebconsoleconfig
+    subresources:
+      status: {}
 
 - apiVersion: apps/v1
   kind: Deployment
@@ -17290,7 +17436,7 @@ objects:
         containers:
         - name: operator
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command: ["hypershift", "experimental", "openshift-webconsole-operator"]
           args:
           - "-v=${LOGLEVEL}"
@@ -17314,6 +17460,7 @@ objects:
     version: 3.10.0
     logging:
       level: ${{COMPONENT_LOGLEVEL}}
+    replicas: 1
 `)
 
 func installOpenshiftWebConsoleOperatorInstallYamlBytes() ([]byte, error) {
@@ -17387,6 +17534,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-web-console:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   # This namespace cannot be changed. Only `+"`"+`openshift-web-console`+"`"+` is supported.
   value: openshift-web-console
@@ -17423,7 +17572,7 @@ objects:
         containers:
         - name: webconsole
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command:
           - "/usr/bin/origin-web-console"
           - "--audit-log-path=-"
@@ -17594,6 +17743,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-template-service-broker:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: openshift-template-service-broker
 - name: LOGLEVEL
@@ -17627,7 +17778,7 @@ objects:
         containers:
         - name: c
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command:
           - "/usr/bin/template-service-broker"
           - "start"

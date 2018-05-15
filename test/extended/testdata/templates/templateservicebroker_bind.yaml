@@ -1,5 +1,7 @@
 apiVersion: v1
 kind: Template
+metadata:
+  name: tsbtemplate
 objects:
 - apiVersion: v1
   kind: Secret

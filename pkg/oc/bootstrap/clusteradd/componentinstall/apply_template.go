@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/golang/glog"
@@ -28,10 +29,10 @@ type Template struct {
 	WaitCondition func() (bool, error)
 }
 
-func (t Template) MakeReady(image, baseDir string, params map[string]string) Component {
+func (t Template) MakeReady(cliImage, baseDir string, params map[string]string) Component {
 	return installReadyTemplate{
 		template: t,
-		image:    image,
+		image:    cliImage,
 		baseDir:  baseDir,
 		params:   params,
 	}
@@ -50,11 +51,12 @@ done </privileged-sa-list.txt
 ns=""
 if [ -s /namespace-file ]; then
 	ns="--namespace=$(cat /namespace-file) "
-	oc create ns $(cat /namespace-file) --config=/kubeconfig.kubeconfig --dry-run -o yaml | oc apply --config=/kubeconfig.kubeconfig -f -
 fi
 
 if [ -s /namespace.yaml ]; then
 	oc apply --config=/kubeconfig.kubeconfig -f /namespace.yaml
+elif [ -s /namespace-file ]; then
+	oc create ns $(cat /namespace-file) --config=/kubeconfig.kubeconfig --dry-run -o yaml | oc apply --config=/kubeconfig.kubeconfig -f -
 fi
 
 if [ -s /rbac.yaml ]; then
@@ -75,7 +77,7 @@ func (opt installReadyTemplate) Name() string {
 	return opt.template.Name
 }
 
-func (opt installReadyTemplate) Install(dockerClient dockerhelper.Interface, logdir string) error {
+func (opt installReadyTemplate) Install(dockerClient dockerhelper.Interface) error {
 	imageRunHelper := run.NewRunHelper(dockerhelper.NewHelper(dockerClient)).New()
 
 	glog.Infof("Installing %q\n", opt.Name())
@@ -103,7 +105,7 @@ func (opt installReadyTemplate) Install(dockerClient dockerhelper.Interface, log
 			Privileged().
 			DiscardContainer().
 			Copy(contentToCopy).
-			SaveContainerLogs(opt.Name(), logdir).
+			SaveContainerLogs(opt.Name(), filepath.Join(opt.baseDir, "logs")).
 			HostNetwork().
 			HostPid().
 			Entrypoint("sh").
@@ -151,14 +153,4 @@ func toPrivilegedSAFile(namespace string, privilegedSANames []string) []byte {
 		output = output + fmt.Sprintf("system:serviceaccount:%v:%v\n", namespace, v)
 	}
 	return []byte(output)
-}
-
-func InstallTemplates(templates []Template, image, baseDir string, params map[string]string, dockerClient dockerhelper.Interface,
-	logdir string) error {
-	components := []Component{}
-	for _, template := range templates {
-		components = append(components, template.MakeReady(image, baseDir, params))
-	}
-
-	return InstallComponents(components, dockerClient, logdir)
 }

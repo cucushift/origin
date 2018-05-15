@@ -19,19 +19,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 
+	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	authapi "github.com/openshift/origin/pkg/authorization/apis/authorization"
+	configcmd "github.com/openshift/origin/pkg/bulk"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
-
-	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
-	configcmd "github.com/openshift/origin/pkg/bulk"
+	"github.com/openshift/origin/pkg/cmd/util/print"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
+	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/oc/generate/app"
 	securityclientinternal "github.com/openshift/origin/pkg/security/generated/internalclientset"
 	oscc "github.com/openshift/origin/pkg/security/securitycontextconstraints"
@@ -220,13 +221,6 @@ type RouterConfig struct {
 	// connections.
 	MaxConnections string
 
-	// ExposeMetrics is a hint on whether to expose metrics.
-	ExposeMetrics bool
-
-	// MetricsImage is the image to run a sidecar container with in the router
-	// pod.
-	MetricsImage string
-
 	// Ciphers is the set of ciphers to use with bind
 	// modern | intermediate | old | set of cihers
 	Ciphers string
@@ -298,8 +292,6 @@ func NewCmdRouter(f *clientcmd.Factory, parentName, name string, out, errout io.
 	cmd.Flags().IntVar(&cfg.StatsPort, "stats-port", cfg.StatsPort, "If the underlying router implementation can provide statistics this is a hint to expose it on this port. Specify 0 if you want to turn off exposing the statistics.")
 	cmd.Flags().StringVar(&cfg.StatsPassword, "stats-password", cfg.StatsPassword, "If the underlying router implementation can provide statistics this is the requested password for auth.  If not set a password will be generated. Not available for external appliance based routers (e.g. F5)")
 	cmd.Flags().StringVar(&cfg.StatsUsername, "stats-user", cfg.StatsUsername, "If the underlying router implementation can provide statistics this is the requested username for auth. Not available for external appliance based routers (e.g. F5)")
-	cmd.Flags().BoolVar(&cfg.ExposeMetrics, "expose-metrics", cfg.ExposeMetrics, "If true, attempts to run an extra container in the pod to expose metrics - the image will either be set depending on the router implementation or provided with --metrics-image. Not useful where comprehensive metrics are available through the stats-port (e.g. haproxy router)")
-	cmd.Flags().StringVar(&cfg.MetricsImage, "metrics-image", cfg.MetricsImage, "If --expose-metrics is specified this is the image to use to run a sidecar container in the pod exposing metrics. If not set and --expose-metrics is true the image will depend on router implementation. Not useful where comprehensive metrics are available through the stats-port (e.g. haproxy router)")
 	cmd.Flags().BoolVar(&cfg.HostNetwork, "host-network", cfg.HostNetwork, "If true (the default), then use host networking rather than using a separate container network stack. Not required for external appliance based routers (e.g. F5)")
 	cmd.Flags().BoolVar(&cfg.HostPorts, "host-ports", cfg.HostPorts, "If true (the default), when not using host networking host ports will be exposed. Not required for external appliance based routers (e.g. F5)")
 	cmd.Flags().StringVar(&cfg.ExternalHost, "external-host", cfg.ExternalHost, "If the underlying router implementation connects with an external host, this is the external host's hostname.")
@@ -826,7 +818,7 @@ func RunCmdRouter(f *clientcmd.Factory, cmd *cobra.Command, out, errout io.Write
 	list := &kapi.List{Items: objects}
 
 	if cfg.Action.ShouldPrint() {
-		fn := cmdutil.VersionedPrintObject(kcmdutil.PrintObject, cmd, out)
+		fn := print.VersionedPrintObject(legacyscheme.Scheme, legacyscheme.Registry, kcmdutil.PrintObject, cmd, out)
 		if err := fn(list); err != nil {
 			return fmt.Errorf("unable to print object: %v", err)
 		}
@@ -906,7 +898,7 @@ func validateServiceAccount(client securityclientinternal.Interface, ns string, 
 	// get set of sccs applicable to the service account
 	userInfo := serviceaccount.UserInfo(ns, serviceAccount, "")
 	for _, scc := range sccList.Items {
-		if oscc.ConstraintAppliesTo(&scc, userInfo) {
+		if oscc.ConstraintAppliesTo(&scc, userInfo, "", nil) {
 			switch {
 			case hostPorts && scc.AllowHostPorts:
 				return nil

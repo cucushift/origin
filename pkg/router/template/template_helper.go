@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -14,7 +15,11 @@ import (
 
 	routeapi "github.com/openshift/origin/pkg/route/apis/route"
 	templateutil "github.com/openshift/origin/pkg/router/template/util"
-	fileutil "github.com/openshift/origin/pkg/util/file"
+	haproxyutil "github.com/openshift/origin/pkg/router/template/util/haproxy"
+)
+
+const (
+	certConfigMap = "cert_config.map"
 )
 
 func isTrue(s string) bool {
@@ -99,52 +104,22 @@ func genSubdomainWildcardRegexp(hostname, path string, exactPath bool) string {
 	return fmt.Sprintf(`^[^\.]*%s(|/.*)$`, expr)
 }
 
+// generateRouteRegexp is now legacy and around for backward
+// compatibility and allows old templates to continue running.
 // Generate a regular expression to match route hosts (and paths if any).
 func generateRouteRegexp(hostname, path string, wildcard bool) string {
-	hostRE := regexp.QuoteMeta(hostname)
-	if wildcard {
-		subdomain := routeapi.GetDomainForHost(hostname)
-		if len(subdomain) == 0 {
-			glog.Warningf("Generating subdomain wildcard regexp - invalid host name %s", hostname)
-		} else {
-			subdomainRE := regexp.QuoteMeta(fmt.Sprintf(".%s", subdomain))
-			hostRE = fmt.Sprintf(`[^\.]*%s`, subdomainRE)
-		}
-	}
-
-	portRE := "(:[0-9]+)?"
-
-	// build the correct subpath regex, depending on whether path ends with a segment separator
-	var pathRE, subpathRE string
-	switch {
-	case strings.TrimRight(path, "/") == "":
-		// Special-case paths consisting solely of "/" to match a root request to "" as well
-		pathRE = ""
-		subpathRE = "(/.*)?"
-	case strings.HasSuffix(path, "/"):
-		pathRE = regexp.QuoteMeta(path)
-		subpathRE = "(.*)?"
-	default:
-		pathRE = regexp.QuoteMeta(path)
-		subpathRE = "(/.*)?"
-	}
-
-	return "^" + hostRE + portRE + pathRE + subpathRE + "$"
+	return templateutil.GenerateRouteRegexp(hostname, path, wildcard)
 }
 
+// genCertificateHostName is now legacy and around for backward
+// compatibility and allows old templates to continue running.
 // Generates the host name to use for serving/certificate matching.
 // If wildcard is set, a wildcard host name (*.<subdomain>) is generated.
 func genCertificateHostName(hostname string, wildcard bool) string {
-	if wildcard {
-		if idx := strings.IndexRune(hostname, '.'); idx > 0 {
-			return fmt.Sprintf("*.%s", hostname[idx+1:])
-		}
-	}
-
-	return hostname
+	return templateutil.GenCertificateHostName(hostname, wildcard)
 }
 
-// Returns the list of endpoints for the given route's service
+// processEndpointsForAlias returns the list of endpoints for the given route's service
 // action argument further processes the list e.g. shuffle
 // The default action is in-order traversal of internal data structure that stores
 //   the endpoints (does not change the return order if the data structure did not mutate)
@@ -173,23 +148,107 @@ func endpointsForAlias(alias ServiceAliasConfig, svc ServiceUnit) []Endpoint {
 	return endpoints
 }
 
-// sortedMapData returns the sorted data in a haproxy map. The returned data is
-// in alphabetically reverse order. The sortSubGroups option sorts the
-// non-wildcard paths first and adds the sorted wildcard paths at the end.
-// Note: The reversed sorting ensures we do a longest path match first.
-func sortedMapData(name string, sortSubGroups bool) []string {
-	lines, err := fileutil.ReadLines(name)
-	if err != nil {
-		glog.Errorf("Error reading map file %s: %v", name, err)
-		return []string{}
+// backendConfig returns a haproxy backend config for a given service alias.
+func backendConfig(name string, cfg ServiceAliasConfig, hascert bool) *haproxyutil.BackendConfig {
+	return &haproxyutil.BackendConfig{
+		Name:           name,
+		Host:           cfg.Host,
+		Path:           cfg.Path,
+		IsWildcard:     cfg.IsWildcard,
+		Termination:    cfg.TLSTermination,
+		InsecurePolicy: cfg.InsecureEdgeTerminationPolicy,
+		HasCertificate: hascert,
 	}
+}
 
-	if sortSubGroups {
-		return templateutil.SortMapPaths(lines, `^[^\.]*\.`)
+// generateHAProxyCertConfigMap generates haproxy certificate config map contents.
+func generateHAProxyCertConfigMap(td templateData) []string {
+	lines := make([]string, 0)
+	for k, cfg := range td.State {
+		hascert := false
+		if len(cfg.Host) > 0 {
+			cert, ok := cfg.Certificates[cfg.Host]
+			hascert = ok && len(cert.Contents) > 0
+		}
+
+		backendConfig := backendConfig(k, cfg, hascert)
+		if entry := haproxyutil.GenerateMapEntry(certConfigMap, backendConfig); entry != nil {
+			fqCertPath := path.Join(td.WorkingDir, "certs", entry.Key)
+			lines = append(lines, fmt.Sprintf("%s %s", fqCertPath, entry.Value))
+		}
 	}
 
 	sort.Sort(sort.Reverse(sort.StringSlice(lines)))
 	return lines
+}
+
+// getHTTPAliasesGroupedByHost returns HTTP(S) aliases grouped by their host.
+func getHTTPAliasesGroupedByHost(aliases map[string]ServiceAliasConfig) map[string]map[string]ServiceAliasConfig {
+	result := make(map[string]map[string]ServiceAliasConfig)
+
+	for k, a := range aliases {
+		if a.TLSTermination == routeapi.TLSTerminationPassthrough {
+			continue
+		}
+
+		if _, exists := result[a.Host]; !exists {
+			result[a.Host] = make(map[string]ServiceAliasConfig)
+		}
+		result[a.Host][k] = a
+	}
+
+	return result
+}
+
+// getPrimaryAliasKey returns the key of the primary alias for a group of aliases.
+// It is assumed that all input aliases have the same host.
+// In case of a single alias, the primary alias is the alias itself.
+// In case of multiple alias with no TSL termination (Edge or Passthrough),
+// the primary alias is the alphabetically last alias.
+// In case of multiple aliases, some of them with TLS termination, the primary alias is
+// the alphabetically last alias among the TLS aliases.
+func getPrimaryAliasKey(aliases map[string]ServiceAliasConfig) string {
+	if len(aliases) == 0 {
+		return ""
+	}
+
+	if len(aliases) == 1 {
+		for k := range aliases {
+			return k
+		}
+	}
+
+	keys := make([]string, len(aliases))
+	for k := range aliases {
+		keys = append(keys, k)
+	}
+
+	sort.Sort(sort.Reverse(sort.StringSlice(keys)))
+
+	for _, k := range keys {
+		if aliases[k].TLSTermination == routeapi.TLSTerminationEdge || aliases[k].TLSTermination == routeapi.TLSTerminationReencrypt {
+			return k
+		}
+	}
+
+	return keys[0]
+}
+
+// generateHAProxyMap generates a named haproxy certificate config map contents.
+func generateHAProxyMap(name string, td templateData) []string {
+	if name == certConfigMap {
+		return generateHAProxyCertConfigMap(td)
+	}
+
+	lines := make([]string, 0)
+	for k, cfg := range td.State {
+		backendConfig := backendConfig(k, cfg, false)
+		if entry := haproxyutil.GenerateMapEntry(name, backendConfig); entry != nil {
+			lines = append(lines, fmt.Sprintf("%s %s", entry.Key, entry.Value))
+		}
+	}
+
+	return templateutil.SortMapPaths(lines, `^[^\.]*\.`)
 }
 
 var helperFunctions = template.FuncMap{
@@ -207,5 +266,8 @@ var helperFunctions = template.FuncMap{
 	"isTrue":     isTrue,     //determines if a given variable is a true value
 	"firstMatch": firstMatch, //anchors provided regular expression and evaluates against given strings, returns the first matched string or ""
 
-	"sortedMapData": sortedMapData, //returns sorted map contents. The data can optionally be sorted on the non-wildcard and wildcard sub-groups
+	"getHTTPAliasesGroupedByHost": getHTTPAliasesGroupedByHost, //returns HTTP(S) aliases grouped by their host
+	"getPrimaryAliasKey":          getPrimaryAliasKey,          //returns the key of the primary alias for a group of aliases
+
+	"generateHAProxyMap": generateHAProxyMap, //generates a haproxy map content
 }

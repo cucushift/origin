@@ -16,8 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	api "k8s.io/kubernetes/pkg/apis/core"
-	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 )
@@ -295,7 +293,11 @@ func applyClientConnectionOverrides(overrides *ClientConnectionOverrides, kubeCo
 // DefaultClientTransport sets defaults for a client Transport that are suitable
 // for use by infrastructure components.
 func DefaultClientTransport(rt http.RoundTripper) http.RoundTripper {
-	transport := rt.(*http.Transport)
+	transport, ok := rt.(*http.Transport)
+	if !ok {
+		return rt
+	}
+
 	// TODO: this should be configured by the caller, not in this method.
 	dialer := &net.Dialer{
 		Timeout:   30 * time.Second,
@@ -355,30 +357,6 @@ func GetOAuthClientCertCAs(options MasterConfig) ([]*x509.Certificate, error) {
 	}
 
 	return allCerts, nil
-}
-
-func GetKubeletClientConfig(options MasterConfig) *kubeletclient.KubeletClientConfig {
-	config := &kubeletclient.KubeletClientConfig{
-		Port: options.KubeletClientInfo.Port,
-		PreferredAddressTypes: []string{
-			string(api.NodeHostName),
-			string(api.NodeInternalIP),
-			string(api.NodeExternalIP),
-		},
-	}
-
-	if len(options.KubeletClientInfo.CA) > 0 {
-		config.EnableHttps = true
-		config.CAFile = options.KubeletClientInfo.CA
-	}
-
-	if len(options.KubeletClientInfo.ClientCert.CertFile) > 0 {
-		config.EnableHttps = true
-		config.CertFile = options.KubeletClientInfo.ClientCert.CertFile
-		config.KeyFile = options.KubeletClientInfo.ClientCert.KeyFile
-	}
-
-	return config
 }
 
 func IsPasswordAuthenticator(provider IdentityProvider) bool {

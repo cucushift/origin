@@ -7,6 +7,8 @@ parameters:
   value: kube-dns
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: LOGLEVEL
   value: "0"
 - name: KUBEDNS_CONFIG_HOST_PATH
@@ -42,7 +44,8 @@ objects:
         containers:
         - name: kube-proxy
           image: ${IMAGE}
-          command: ["openshift", "start", "node"]
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
+          command: ["openshift", "start", "network"]
           args:
           - "--enable=dns"
           - "--config=/etc/origin/node/node-config.yaml"

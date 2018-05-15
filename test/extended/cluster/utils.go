@@ -116,7 +116,7 @@ func CreatePods(c kclientset.Interface, appName string, ns string, labels map[st
 			// If a stepping tuningset has been defined in the config, we wait for the step of pods to be created, and pause
 			if tuning.Pods.Stepping.StepSize != 0 && (i+1)%tuning.Pods.Stepping.StepSize == 0 {
 				framework.Logf("Waiting for pods created this step to be running")
-				pods, err := exutil.WaitForPods(c.CoreV1().Pods(ns), exutil.ParseLabelsOrDie(mapToString(labels)), exutil.CheckPodIsRunningFn, i+1, tuning.Pods.Stepping.Timeout*time.Second)
+				pods, err := exutil.WaitForPods(c.CoreV1().Pods(ns), exutil.ParseLabelsOrDie(mapToString(labels)), exutil.CheckPodIsRunning, i+1, tuning.Pods.Stepping.Timeout*time.Second)
 				if err != nil {
 					framework.Failf("Error in wait... %v", err)
 				} else if len(pods) < i+1 {
@@ -518,4 +518,38 @@ func SetNamespaceLabels(c kclientset.Interface, name string, labels map[string]s
 	}
 	ns.Labels = labels
 	return c.CoreV1().Namespaces().Update(ns)
+}
+
+func ProjectExists(oc *exutil.CLI, name string) (bool, error) {
+	p, err := oc.AdminProjectClient().Project().Projects().Get(name, metav1.GetOptions{})
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return false, nil
+		}
+		return false, err
+	}
+	if (*p).Name == name {
+		return true, nil
+	}
+	return false, nil
+}
+
+func DeleteProject(oc *exutil.CLI, name string, interval, timeout time.Duration) error {
+	e2e.Logf("Deleting project %v ...", name)
+	err := oc.AdminProjectClient().Project().Projects().Delete(name, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	err = wait.Poll(interval, timeout, func() (bool, error) {
+		exists, err := ProjectExists(oc, name)
+		if err != nil {
+			return true, err
+		}
+		if exists {
+			e2e.Logf("The project %v is still there", name)
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
 }

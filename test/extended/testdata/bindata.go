@@ -62,6 +62,7 @@
 // test/extended/testdata/builds/test-cds-sourcebuild.json
 // test/extended/testdata/builds/test-context-build.json
 // test/extended/testdata/builds/test-docker-build-pullsecret.json
+// test/extended/testdata/builds/test-docker-build-quota-optimized.json
 // test/extended/testdata/builds/test-docker-build-quota.json
 // test/extended/testdata/builds/test-docker-build.json
 // test/extended/testdata/builds/test-docker-no-outputname.json
@@ -90,6 +91,7 @@
 // test/extended/testdata/deployments/deployment-example.yaml
 // test/extended/testdata/deployments/deployment-history-limit.yaml
 // test/extended/testdata/deployments/deployment-ignores-deployer.yaml
+// test/extended/testdata/deployments/deployment-image-resolution-is.yaml
 // test/extended/testdata/deployments/deployment-image-resolution.yaml
 // test/extended/testdata/deployments/deployment-min-ready-seconds.yaml
 // test/extended/testdata/deployments/deployment-simple.yaml
@@ -3105,6 +3107,57 @@ func testExtendedTestdataBuildsTestDockerBuildPullsecretJson() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataBuildsTestDockerBuildQuotaOptimizedJson = []byte(`{
+  "kind": "BuildConfig",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "docker-build-quota",
+    "creationTimestamp": null,
+    "labels": {
+      "name": "docker-build-quota"
+    }
+  },
+  "spec": {
+    "resources": {
+      "limits": {
+        "memory": "200Mi"
+      }
+    },
+    "source": {
+      "binary": {
+        "asFile": ""
+      }          
+    },
+    "strategy": {
+      "type": "Docker",
+      "dockerStrategy": {
+        "from": {
+          "kind": "DockerImage",
+          "name": "centos:7"
+        },
+        "noCache": true,
+        "imageOptimizationPolicy": "SkipLayers"
+      }
+    }
+  }
+}
+    `)
+
+func testExtendedTestdataBuildsTestDockerBuildQuotaOptimizedJsonBytes() ([]byte, error) {
+	return _testExtendedTestdataBuildsTestDockerBuildQuotaOptimizedJson, nil
+}
+
+func testExtendedTestdataBuildsTestDockerBuildQuotaOptimizedJson() (*asset, error) {
+	bytes, err := testExtendedTestdataBuildsTestDockerBuildQuotaOptimizedJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/builds/test-docker-build-quota-optimized.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataBuildsTestDockerBuildQuotaJson = []byte(`{
   "kind": "BuildConfig",
   "apiVersion": "v1",
@@ -3450,7 +3503,7 @@ items:
           name: inputimage:latest
         paths:
         - destinationDir: injected/dir
-          sourcePath: /opt/rh/rh-ruby23/root/usr/bin/ruby
+          sourcePath: /opt/rh/rh-ruby22/root/usr/bin/ruby
     strategy:
       customStrategy:
         from:
@@ -3497,7 +3550,7 @@ items:
           name: inputimage:latest
         paths:
         - destinationDir: injected/dir
-          sourcePath: /opt/rh/rh-ruby23/root/usr/bin/ruby
+          sourcePath: /opt/rh/rh-ruby22/root/usr/bin/ruby
     strategy:
       dockerStrategy:
         from:
@@ -3544,7 +3597,7 @@ items:
           name: inputimage:latest
         paths:
         - destinationDir: injected/dir
-          sourcePath: /opt/rh/rh-ruby23/root/usr/bin/ruby
+          sourcePath: /opt/rh/rh-ruby22/root/usr/bin/ruby
     strategy:
       sourceStrategy:
         from:
@@ -3588,7 +3641,7 @@ items:
       dockerStrategy:
         from: 
           kind: ImageStreamTag
-          name: ruby:2.3
+          name: ruby:2.2
           namespace: openshift
 - apiVersion: v1
   kind: BuildConfig
@@ -3610,7 +3663,7 @@ items:
           name: inputimage:latest
         paths:
         - destinationDir: injected/dir
-          sourcePath: /opt/rh/rh-ruby23/root/usr/bin/ruby
+          sourcePath: /opt/rh/rh-ruby22/root/usr/bin/ruby
     strategy:
       sourceStrategy:
         forcePull: true
@@ -3638,7 +3691,7 @@ items:
           name: inputimage:latest
         paths:
         - destinationDir: injected/dir
-          sourcePath: /opt/rh/rh-ruby23/root/usr/bin/ruby
+          sourcePath: /opt/rh/rh-ruby22/root/usr/bin/ruby
     strategy:
       dockerStrategy:
         forcePull: true
@@ -4548,7 +4601,7 @@ func testExtendedTestdataCustomSecretBuilderBuildSh() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsCustomDeploymentYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsCustomDeploymentYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: custom-deployment
@@ -4609,60 +4662,57 @@ func testExtendedTestdataDeploymentsCustomDeploymentYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentExampleYaml = []byte(`apiVersion: v1
-items:
-- apiVersion: v1
-  kind: DeploymentConfig
-  metadata:
-    labels:
-      app: example
-    name: example
-  spec:
-    replicas: 1
-    template:
-      metadata:
-        labels:
-          app: example
-      spec:
-        containers:
-        - imagePullPolicy: Always
-          name: ruby
-          command:
-          - /bin/sleep
-          - "100"
-          ports:
-          - containerPort: 8080
-            protocol: TCP
-        - imagePullPolicy: Always
-          name: mongodb
-          command:
-          - /bin/sleep
-          - "100"
-          ports:
-          - containerPort: 5000
-            protocol: TCP
-    test: false
-    triggers:
-    - type: ConfigChange
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - ruby
-        from:
-          kind: ImageStreamTag
-          name: ruby:latest
-          namespace: openshift
-      type: ImageChange
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - mongodb
-        from:
-          kind: ImageStreamTag
-          name: mongodb:latest
-          namespace: openshift
-      type: ImageChange
-kind: List
+var _testExtendedTestdataDeploymentsDeploymentExampleYaml = []byte(`apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: example
+  name: example
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: example
+    spec:
+      containers:
+      - imagePullPolicy: IfNotPresent
+        name: ruby
+        command:
+        - /bin/sleep
+        - "100"
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+      - imagePullPolicy: IfNotPresent
+        name: mongodb
+        command:
+        - /bin/sleep
+        - "100"
+        ports:
+        - containerPort: 5000
+          protocol: TCP
+  test: false
+  triggers:
+  - type: ConfigChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - ruby
+      from:
+        kind: ImageStreamTag
+        name: ruby:latest
+        namespace: openshift
+    type: ImageChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - mongodb
+      from:
+        kind: ImageStreamTag
+        name: mongodb:latest
+        namespace: openshift
+    type: ImageChange
 `)
 
 func testExtendedTestdataDeploymentsDeploymentExampleYamlBytes() ([]byte, error) {
@@ -4680,7 +4730,7 @@ func testExtendedTestdataDeploymentsDeploymentExampleYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentHistoryLimitYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsDeploymentHistoryLimitYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: history-limit
@@ -4720,7 +4770,7 @@ func testExtendedTestdataDeploymentsDeploymentHistoryLimitYaml() (*asset, error)
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentIgnoresDeployerYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsDeploymentIgnoresDeployerYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   annotations:
@@ -4760,71 +4810,85 @@ func testExtendedTestdataDeploymentsDeploymentIgnoresDeployerYaml() (*asset, err
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentImageResolutionYaml = []byte(`apiVersion: v1
-kind: List
-items:
-- apiVersion: v1
-  kind: ImageStream
-  metadata:
-    name: deployment-image-resolution
-  spec:
-    tags:
-    - name: pullthrough
+var _testExtendedTestdataDeploymentsDeploymentImageResolutionIsYaml = []byte(`apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: deployment-image-resolution
+spec:
+  tags:
+  - name: pullthrough
+    from:
+      kind: DockerImage
+      name: docker.io/centos:centos7
+    referencePolicy:
+      type: Local
+  - name: direct
+    from:
+      kind: DockerImage
+      name: docker.io/centos:centos7
+    referencePolicy:
+     type: Source`)
+
+func testExtendedTestdataDeploymentsDeploymentImageResolutionIsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataDeploymentsDeploymentImageResolutionIsYaml, nil
+}
+
+func testExtendedTestdataDeploymentsDeploymentImageResolutionIsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataDeploymentsDeploymentImageResolutionIsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/deployments/deployment-image-resolution-is.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataDeploymentsDeploymentImageResolutionYaml = []byte(`apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: deployment-image-resolution
+spec:
+  strategy:
+    type: Rolling
+    rollingParams:
+  template:
+    metadata:
+      labels:
+        name: deployment-image-resolution
+    spec:
+      containers:
+      - name: first
+        image: ""
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/sleep
+          - infinity
+      - name: second
+        image: " "
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/sleep
+          - infinity
+  triggers:
+  - type: ConfigChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - first
       from:
-        kind: DockerImage
-        name: docker.io/centos:centos7
-      referencePolicy:
-        type: Local
-    - name: direct
+        kind: ImageStreamTag
+        name: deployment-image-resolution:pullthrough
+    type: ImageChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - second
       from:
-        kind: DockerImage
-        name: docker.io/centos:centos7
-      referencePolicy:
-        type: Source
-- apiVersion: v1
-  kind: DeploymentConfig
-  metadata:
-    name: deployment-image-resolution
-  spec:
-    strategy:
-      type: Rolling
-      rollingParams:
-    template:
-      metadata:
-        labels:
-          name: deployment-image-resolution
-      spec:
-        containers:
-        - name: first
-          image: ""
-          imagePullPolicy: IfNotPresent
-          command:
-            - /bin/sleep
-            - infinity
-        - name: second
-          image: ""
-          imagePullPolicy: IfNotPresent
-          command:
-            - /bin/sleep
-            - infinity
-    triggers:
-    - type: ConfigChange
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - first
-        from:
-          kind: ImageStreamTag
-          name: deployment-image-resolution:pullthrough
-      type: ImageChange
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - second
-        from:
-          kind: ImageStreamTag
-          name: deployment-image-resolution:direct
-      type: ImageChange
+        kind: ImageStreamTag
+        name: deployment-image-resolution:direct
+    type: ImageChange
+
 `)
 
 func testExtendedTestdataDeploymentsDeploymentImageResolutionYamlBytes() ([]byte, error) {
@@ -4842,7 +4906,7 @@ func testExtendedTestdataDeploymentsDeploymentImageResolutionYaml() (*asset, err
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentMinReadySecondsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsDeploymentMinReadySecondsYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: minreadytest
@@ -4881,7 +4945,7 @@ func testExtendedTestdataDeploymentsDeploymentMinReadySecondsYaml() (*asset, err
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentSimpleYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsDeploymentSimpleYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: deployment-simple
@@ -4927,7 +4991,7 @@ func testExtendedTestdataDeploymentsDeploymentSimpleYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentTriggerYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsDeploymentTriggerYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   labels:
@@ -4973,7 +5037,7 @@ func testExtendedTestdataDeploymentsDeploymentTriggerYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsDeploymentWithRefEnvYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsDeploymentWithRefEnvYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: deployment-simple
@@ -5023,7 +5087,7 @@ func testExtendedTestdataDeploymentsDeploymentWithRefEnvYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsFailingPreHookYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsFailingPreHookYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: hook
@@ -5072,7 +5136,7 @@ func testExtendedTestdataDeploymentsFailingPreHookYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsGenerationTestYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsGenerationTestYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: generation-test
@@ -5121,52 +5185,49 @@ func testExtendedTestdataDeploymentsGenerationTestYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsMultiIctDeploymentYaml = []byte(`apiVersion: v1
-items:
-- apiVersion: v1
-  kind: DeploymentConfig
-  metadata:
-    labels:
-      app: example
-    name: example
-  spec:
-    replicas: 1
-    template:
-      metadata:
-        labels:
-          app: example
-      spec:
-        containers:
-        - imagePullPolicy: Always
-          name: ruby
-          command:
-          - /bin/sleep
-          - "100"
-          ports:
-          - containerPort: 8080
-            protocol: TCP
-        - imagePullPolicy: Always
-          name: ruby2
-          command:
-          - /bin/sleep
-          - "100"
-          ports:
-          - containerPort: 8081
-            protocol: TCP
-    test: false
-    triggers:
-    - type: ConfigChange
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - ruby
-        - ruby2
-        from:
-          kind: ImageStreamTag
-          name: ruby:latest
-          namespace: openshift
-      type: ImageChange
-kind: List
+var _testExtendedTestdataDeploymentsMultiIctDeploymentYaml = []byte(`apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: example
+  name: example
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: example
+    spec:
+      containers:
+      - imagePullPolicy: IfNotPresent
+        name: ruby
+        command:
+        - /bin/sleep
+        - "100"
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+      - imagePullPolicy: IfNotPresent
+        name: ruby2
+        command:
+        - /bin/sleep
+        - "100"
+        ports:
+        - containerPort: 8081
+          protocol: TCP
+  test: false
+  triggers:
+  - type: ConfigChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - ruby
+      - ruby2
+      from:
+        kind: ImageStreamTag
+        name: ruby:latest
+        namespace: openshift
+    type: ImageChange
 `)
 
 func testExtendedTestdataDeploymentsMultiIctDeploymentYamlBytes() ([]byte, error) {
@@ -5184,7 +5245,7 @@ func testExtendedTestdataDeploymentsMultiIctDeploymentYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsPausedDeploymentYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsPausedDeploymentYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: paused
@@ -5220,7 +5281,7 @@ func testExtendedTestdataDeploymentsPausedDeploymentYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsReadinessTestYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsReadinessTestYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: readiness
@@ -5264,7 +5325,7 @@ func testExtendedTestdataDeploymentsReadinessTestYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsTagImagesDeploymentYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsTagImagesDeploymentYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: tag-images
@@ -5317,7 +5378,7 @@ func testExtendedTestdataDeploymentsTagImagesDeploymentYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsTestDeploymentBrokenYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsTestDeploymentBrokenYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: brokendeployment
@@ -5365,7 +5426,7 @@ func testExtendedTestdataDeploymentsTestDeploymentBrokenYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataDeploymentsTestDeploymentTestYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataDeploymentsTestDeploymentTestYaml = []byte(`apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   name: deployment-test
@@ -5487,7 +5548,7 @@ var _testExtendedTestdataForcepullTestJson = []byte(`{
 						"from": {
 							"kind": "ImageStreamTag",
 						        "namespace": "openshift",
-							"name": "ruby:latest"
+							"name": "ruby:2.2"
 						},
 						"env": [
 							{
@@ -8584,16 +8645,6 @@ var _testExtendedTestdataJenkinsPluginSharedResourcesTemplateJson = []byte(`{
       }
     },
     {
-      "kind": "ImageStream",
-      "apiVersion": "v1",
-      "metadata": {
-        "name": "nodejs-010-centos7"
-      },
-      "spec": {
-        "dockerImageRepository": "${NAMESPACE}/nodejs-010-centos7"
-      }
-    },
-    {
       "kind": "BuildConfig",
       "apiVersion": "v1",
       "metadata": {
@@ -8628,7 +8679,8 @@ var _testExtendedTestdataJenkinsPluginSharedResourcesTemplateJson = []byte(`{
           "sourceStrategy": {
             "from": {
               "kind": "ImageStreamTag",
-              "name": "nodejs-010-centos7:latest"
+              "namespace": "openshift",
+              "name": "nodejs:latest"
             }
           }
         },
@@ -9843,7 +9895,7 @@ items:
           deploymentconfig: router-http-echo
       spec:
         containers:
-        - image: openshift/origin-base
+        - image: openshift/origin-node
           name: router-http-echo
           command:
             - /usr/bin/socat
@@ -10453,6 +10505,34 @@ objects:
         protocol: TCP
     serviceAccountName: default
 
+# a router that overrides domains
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: router-override-domains
+    labels:
+      test: router-override-domains
+  spec:
+    terminationGracePeriodSeconds: 1
+    containers:
+    - name: router
+      image: ${IMAGE}
+      imagePullPolicy: IfNotPresent
+      env:
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      args: ["--name=test-override-domains", "--namespace=$(POD_NAMESPACE)", "--loglevel=4", "--override-domains=null.ptr,void.str", "--hostname-template=${name}-${namespace}.apps.veto.test"]
+      hostNetwork: false
+      ports:
+      - containerPort: 80
+      - containerPort: 443
+      - containerPort: 1936
+        name: stats
+        protocol: TCP
+    serviceAccountName: default
+
 
 # ensure the router can access routes and endpoints
 - apiVersion: v1
@@ -10494,6 +10574,36 @@ objects:
       name: endpoints
     ports:
     - targetPort: http
+
+# routes that contain overridden domains
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: route-override-domain-1
+    labels:
+      test: router
+      select: override-domains
+  spec:
+    host: y.a.null.ptr
+    path: /Letter
+    to:
+      name: endpoints
+    ports:
+    - targetPort: 8080
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: route-override-domain-2
+    labels:
+      test: router
+      select: override-domains
+  spec:
+    host: main.void.str
+    path: /Letter
+    to:
+      name: endpoints
+    ports:
+    - targetPort: 8080
 
 # a service to be routed to
 - apiVersion: v1
@@ -10694,8 +10804,10 @@ items:
         apiVersion: v1
         metadata:
           name: secret
+          labels:
+            foo: bar
       - kind: Deployment
-        apiVersion: apps/v1beta1
+        apiVersion: apps/v1
         metadata:
           name: deployment
         spec:
@@ -10749,6 +10861,8 @@ func testExtendedTestdataTemplatesTemplateinstance_objectkindsYaml() (*asset, er
 
 var _testExtendedTestdataTemplatesTemplateservicebroker_bindYaml = []byte(`apiVersion: v1
 kind: Template
+metadata:
+  name: tsbtemplate
 objects:
 - apiVersion: v1
   kind: Secret
@@ -16414,7 +16528,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "2.4"
+              "name": "2.5"
             },
             "name": "latest",
             "referencePolicy": {
@@ -16500,6 +16614,23 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Ruby 2.5 applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-ruby-container/blob/master/2.5/README.md.",
+              "iconClass": "icon-ruby",
+              "openshift.io/display-name": "Ruby 2.5",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/sclorg/ruby-ex.git",
+              "supports": "ruby:2.5,ruby",
+              "tags": "builder,ruby",
+              "version": "2.5"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/centos/ruby-25-centos7:latest"
+            },
+            "name": "2.5"
           }
         ]
       }
@@ -17256,6 +17387,25 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Node.js 8 applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/bucharest-gold/centos7-s2i-nodejs.",
+              "iconClass": "icon-nodejs",
+              "openshift.io/display-name": "OpenShift Application Runtimes Node.js 8",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/nodejs-ex.git",
+              "tags": "builder,nodejs",
+              "version": "8"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhoar-nodejs/nodejs-8"
+            },
+            "name": "8-RHOAR",
+            "referencePolicy": {
+              "type": "Local"
+            }
           }
         ]
       }
@@ -17774,7 +17924,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "2.4"
+              "name": "2.5"
             },
             "name": "latest",
             "referencePolicy": {
@@ -17860,6 +18010,23 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Ruby 2.5 applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-ruby-container/blob/master/2.5/README.md.",
+              "iconClass": "icon-ruby",
+              "openshift.io/display-name": "Ruby 2.5",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/sclorg/ruby-ex.git",
+              "supports": "ruby:2.5,ruby",
+              "tags": "builder,ruby",
+              "version": "2.5"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhscl/ruby-25-rhel7:latest"
+            },
+            "name": "2.5"
           }
         ]
       }
@@ -20083,7 +20250,6 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
             },
             "stringData": {
                 "cakephp-secret-token": "${CAKEPHP_SECRET_TOKEN}",
-                "cakephp-security-cipher-seed": "${CAKEPHP_SECURITY_CIPHER_SEED}",
                 "cakephp-security-salt": "${CAKEPHP_SECURITY_SALT}",
                 "database-password": "${DATABASE_PASSWORD}",
                 "database-user": "${DATABASE_USER}"
@@ -20154,7 +20320,7 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
                     }
                 },
                 "postCommit": {
-                    "script": "./lib/Cake/Console/cake test app AllTests"
+                    "script": "./vendor/bin/phpunit"
                 },
                 "source": {
                     "contextDir": "${CONTEXT_DIR}",
@@ -20174,7 +20340,7 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "php:7.0",
+                            "name": "php:${PHP_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -20280,15 +20446,6 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
                                         "valueFrom": {
                                             "secretKeyRef": {
                                                 "key": "cakephp-security-salt",
-                                                "name": "${NAME}"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "CAKEPHP_SECURITY_CIPHER_SEED",
-                                        "valueFrom": {
-                                            "secretKeyRef": {
-                                                "key": "cakephp-security-cipher-seed",
                                                 "name": "${NAME}"
                                             }
                                         }
@@ -20530,6 +20687,13 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
             "value": "openshift"
         },
         {
+            "description": "Version of PHP image to be used (5.6, 7.0, 7.1 or latest).",
+            "displayName": "PHP Version",
+            "name": "PHP_VERSION",
+            "required": true,
+            "value": "7.1"
+        },
+        {
             "description": "Maximum amount of memory the CakePHP container can use.",
             "displayName": "Memory Limit",
             "name": "MEMORY_LIMIT",
@@ -20626,13 +20790,6 @@ var _examplesQuickstartsCakephpMysqlPersistentJson = []byte(`{
             "name": "CAKEPHP_SECURITY_SALT"
         },
         {
-            "description": "Security cipher seed for session hash.",
-            "displayName": "CakePHP Security Cipher Seed",
-            "from": "[0-9]{30}",
-            "generate": "expression",
-            "name": "CAKEPHP_SECURITY_CIPHER_SEED"
-        },
-        {
             "description": "How often to check script timestamps for updates, in seconds. 0 will result in OPcache checking for updates on every request.",
             "displayName": "OPcache Revalidation Frequency",
             "name": "OPCACHE_REVALIDATE_FREQ",
@@ -20693,7 +20850,6 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
             },
             "stringData": {
                 "cakephp-secret-token": "${CAKEPHP_SECRET_TOKEN}",
-                "cakephp-security-cipher-seed": "${CAKEPHP_SECURITY_CIPHER_SEED}",
                 "cakephp-security-salt": "${CAKEPHP_SECURITY_SALT}",
                 "database-password": "${DATABASE_PASSWORD}",
                 "database-user": "${DATABASE_USER}"
@@ -20764,7 +20920,7 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
                     }
                 },
                 "postCommit": {
-                    "script": "./lib/Cake/Console/cake test app AllTests"
+                    "script": "./vendor/bin/phpunit"
                 },
                 "source": {
                     "contextDir": "${CONTEXT_DIR}",
@@ -20784,7 +20940,7 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "php:7.0",
+                            "name": "php:${PHP_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -20890,15 +21046,6 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
                                         "valueFrom": {
                                             "secretKeyRef": {
                                                 "key": "cakephp-security-salt",
-                                                "name": "${NAME}"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "CAKEPHP_SECURITY_CIPHER_SEED",
-                                        "valueFrom": {
-                                            "secretKeyRef": {
-                                                "key": "cakephp-security-cipher-seed",
                                                 "name": "${NAME}"
                                             }
                                         }
@@ -21121,6 +21268,13 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
             "value": "openshift"
         },
         {
+            "description": "Version of PHP image to be used (5.6, 7.0, 7.1 or latest).",
+            "displayName": "PHP Version",
+            "name": "PHP_VERSION",
+            "required": true,
+            "value": "7.1"
+        },
+        {
             "description": "Maximum amount of memory the CakePHP container can use.",
             "displayName": "Memory Limit",
             "name": "MEMORY_LIMIT",
@@ -21208,13 +21362,6 @@ var _examplesQuickstartsCakephpMysqlJson = []byte(`{
             "from": "[a-zA-Z0-9]{40}",
             "generate": "expression",
             "name": "CAKEPHP_SECURITY_SALT"
-        },
-        {
-            "description": "Security cipher seed for session hash.",
-            "displayName": "CakePHP Security Cipher Seed",
-            "from": "[0-9]{30}",
-            "generate": "expression",
-            "name": "CAKEPHP_SECURITY_CIPHER_SEED"
         },
         {
             "description": "How often to check script timestamps for updates, in seconds. 0 will result in OPcache checking for updates on every request.",
@@ -22444,7 +22591,7 @@ var _examplesQuickstartsDjangoPostgresqlPersistentJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "python:3.5",
+                            "name": "python:${PYTHON_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -22740,7 +22887,7 @@ var _examplesQuickstartsDjangoPostgresqlPersistentJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "postgresql:9.5",
+                                "name": "postgresql:${POSTGRESQL_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -22767,6 +22914,20 @@ var _examplesQuickstartsDjangoPostgresqlPersistentJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of Python image to be used (3.4, 3.5, 3.6 or latest).",
+            "displayName": "Version of Python Image",
+            "name": "PYTHON_VERSION",
+            "required": true,
+            "value": "3.6"
+        },
+        {
+            "description": "Version of PostgreSQL image to be used (9.4, 9.5, 9.6 or latest).",
+            "displayName": "Version of PostgreSQL Image",
+            "name": "POSTGRESQL_VERSION",
+            "required": true,
+            "value": "9.6"
         },
         {
             "description": "Maximum amount of memory the Django container can use.",
@@ -23006,7 +23167,7 @@ var _examplesQuickstartsDjangoPostgresqlJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "python:3.5",
+                            "name": "python:${PYTHON_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -23283,7 +23444,7 @@ var _examplesQuickstartsDjangoPostgresqlJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "postgresql:9.5",
+                                "name": "postgresql:${POSTGRESQL_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -23310,6 +23471,20 @@ var _examplesQuickstartsDjangoPostgresqlJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of Python image to be used (3.4, 3.5, 3.6 or latest).",
+            "displayName": "Version of Python Image",
+            "name": "PYTHON_VERSION",
+            "required": true,
+            "value": "3.6"
+        },
+        {
+            "description": "Version of PostgreSQL image to be used (9.4, 9.5, 9.6 or latest).",
+            "displayName": "Version of PostgreSQL Image",
+            "name": "POSTGRESQL_VERSION",
+            "required": true,
+            "value": "9.6"
         },
         {
             "description": "Maximum amount of memory the Django container can use.",
@@ -25069,7 +25244,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "nodejs:6",
+                            "name": "nodejs:${NODEJS_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -25165,7 +25340,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                                 "image": " ",
                                 "livenessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 30,
@@ -25179,7 +25354,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                                 ],
                                 "readinessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 3,
@@ -25372,7 +25547,7 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "mongodb:3.2",
+                                "name": "mongodb:${MONGODB_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -25399,6 +25574,20 @@ var _examplesQuickstartsNodejsMongodbPersistentJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of NodeJS image to be used (6, 8, or latest).",
+            "displayName": "Version of NodeJS Image",
+            "name": "NODEJS_VERSION",
+            "required": true,
+            "value": "8"
+        },
+        {
+            "description": "Version of MongoDB image to be used (3.2, 3.4, or latest).",
+            "displayName": "Version of MongoDB Image",
+            "name": "MONGODB_VERSION",
+            "required": true,
+            "value": "3.4"
         },
         {
             "description": "Maximum amount of memory the Node.js container can use.",
@@ -25635,7 +25824,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "nodejs:6",
+                            "name": "nodejs:${NODEJS_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -25731,7 +25920,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                                 "image": " ",
                                 "livenessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 30,
@@ -25745,7 +25934,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                                 ],
                                 "readinessProbe": {
                                     "httpGet": {
-                                        "path": "/pagecount",
+                                        "path": "/",
                                         "port": 8080
                                     },
                                     "initialDelaySeconds": 3,
@@ -25921,7 +26110,7 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "mongodb:3.2",
+                                "name": "mongodb:${MONGODB_VERSION}",
                                 "namespace": "${NAMESPACE}"
                             }
                         },
@@ -25948,6 +26137,20 @@ var _examplesQuickstartsNodejsMongodbJson = []byte(`{
             "name": "NAMESPACE",
             "required": true,
             "value": "openshift"
+        },
+        {
+            "description": "Version of NodeJS image to be used (6, 8, or latest).",
+            "displayName": "Version of NodeJS Image",
+            "name": "NODEJS_VERSION",
+            "required": true,
+            "value": "8"
+        },
+        {
+            "description": "Version of MongoDB image to be used (3.2, 3.4, or latest).",
+            "displayName": "Version of MongoDB Image",
+            "name": "MONGODB_VERSION",
+            "required": true,
+            "value": "3.4"
         },
         {
             "description": "Maximum amount of memory the Node.js container can use.",
@@ -30622,7 +30825,6 @@ var _examplesQuickstartsCakephpMysqlJsonCakephpMysqlJson = []byte(`{
             },
             "stringData": {
                 "cakephp-secret-token": "${CAKEPHP_SECRET_TOKEN}",
-                "cakephp-security-cipher-seed": "${CAKEPHP_SECURITY_CIPHER_SEED}",
                 "cakephp-security-salt": "${CAKEPHP_SECURITY_SALT}",
                 "database-password": "${DATABASE_PASSWORD}",
                 "database-user": "${DATABASE_USER}"
@@ -30693,7 +30895,7 @@ var _examplesQuickstartsCakephpMysqlJsonCakephpMysqlJson = []byte(`{
                     }
                 },
                 "postCommit": {
-                    "script": "./lib/Cake/Console/cake test app AllTests"
+                    "script": "./vendor/bin/phpunit"
                 },
                 "source": {
                     "contextDir": "${CONTEXT_DIR}",
@@ -30713,7 +30915,7 @@ var _examplesQuickstartsCakephpMysqlJsonCakephpMysqlJson = []byte(`{
                         ],
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "php:7.0",
+                            "name": "php:${PHP_VERSION}",
                             "namespace": "${NAMESPACE}"
                         }
                     },
@@ -30819,15 +31021,6 @@ var _examplesQuickstartsCakephpMysqlJsonCakephpMysqlJson = []byte(`{
                                         "valueFrom": {
                                             "secretKeyRef": {
                                                 "key": "cakephp-security-salt",
-                                                "name": "${NAME}"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "CAKEPHP_SECURITY_CIPHER_SEED",
-                                        "valueFrom": {
-                                            "secretKeyRef": {
-                                                "key": "cakephp-security-cipher-seed",
                                                 "name": "${NAME}"
                                             }
                                         }
@@ -31050,6 +31243,13 @@ var _examplesQuickstartsCakephpMysqlJsonCakephpMysqlJson = []byte(`{
             "value": "openshift"
         },
         {
+            "description": "Version of PHP image to be used (5.6, 7.0, 7.1 or latest).",
+            "displayName": "PHP Version",
+            "name": "PHP_VERSION",
+            "required": true,
+            "value": "7.1"
+        },
+        {
             "description": "Maximum amount of memory the CakePHP container can use.",
             "displayName": "Memory Limit",
             "name": "MEMORY_LIMIT",
@@ -31139,13 +31339,6 @@ var _examplesQuickstartsCakephpMysqlJsonCakephpMysqlJson = []byte(`{
             "name": "CAKEPHP_SECURITY_SALT"
         },
         {
-            "description": "Security cipher seed for session hash.",
-            "displayName": "CakePHP Security Cipher Seed",
-            "from": "[0-9]{30}",
-            "generate": "expression",
-            "name": "CAKEPHP_SECURITY_CIPHER_SEED"
-        },
-        {
             "description": "How often to check script timestamps for updates, in seconds. 0 will result in OPcache checking for updates on every request.",
             "displayName": "OPcache Revalidation Frequency",
             "name": "OPCACHE_REVALIDATE_FREQ",
@@ -31188,7 +31381,8 @@ spec:
   hostNetwork: true
   containers:
   - name: etcd
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     workingDir: /var/lib/etcd
     command: ["/bin/bash", "-c"]
     args:
@@ -31240,7 +31434,8 @@ spec:
   hostNetwork: true
   containers:
   - name: api
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     command: ["/bin/bash", "-c"]
     args:
     - |
@@ -31274,7 +31469,8 @@ spec:
       path: /etc/origin/cloudprovider
   - name: master-data
     hostPath:
-      path: /var/lib/origin`)
+      path: /var/lib/origin
+`)
 
 func installKubeApiserverApiserverYamlBytes() ([]byte, error) {
 	return _installKubeApiserverApiserverYaml, nil
@@ -31304,7 +31500,8 @@ spec:
   hostNetwork: true
   containers:
   - name: controllers
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     command: ["hyperkube", "kube-controller-manager"]
     args:
     - "--enable-dynamic-provisioning=true"
@@ -31343,7 +31540,8 @@ spec:
       path: /path/to/master/config-dir
   - name: master-cloud-provider
     hostPath:
-      path: /etc/origin/cloudprovider`)
+      path: /etc/origin/cloudprovider
+`)
 
 func installKubeControllerManagerKubeControllerManagerYamlBytes() ([]byte, error) {
 	return _installKubeControllerManagerKubeControllerManagerYaml, nil
@@ -31369,6 +31567,8 @@ parameters:
   value: kube-dns
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: LOGLEVEL
   value: "0"
 - name: KUBEDNS_CONFIG_HOST_PATH
@@ -31404,7 +31604,8 @@ objects:
         containers:
         - name: kube-proxy
           image: ${IMAGE}
-          command: ["openshift", "start", "node"]
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
+          command: ["openshift", "start", "network"]
           args:
           - "--enable=dns"
           - "--config=/etc/origin/node/node-config.yaml"
@@ -31465,7 +31666,9 @@ metadata:
   name: kube-proxy
 parameters:
 - name: IMAGE
-  value: openshift/origin-control-plane:latest
+  value: openshift/origin-control-plane
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: kube-proxy
 - name: LOGLEVEL
@@ -31515,7 +31718,8 @@ objects:
         containers:
         - name: kube-proxy
           image: ${IMAGE}
-          command: ["openshift", "start", "node"]
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
+          command: ["openshift", "start", "network"]
           args:
           - "--enable=proxy"
           - "--listen=https://0.0.0.0:8444"
@@ -31561,7 +31765,8 @@ spec:
   hostNetwork: true
   containers:
   - name: scheduler
-    image: openshift/origin-control-plane:latest
+    image: IMAGE
+    imagePullPolicy: OPENSHIFT_PULL_POLICY
     command: ["hyperkube", "kube-scheduler"]
     args:
     - "--leader-elect=true"
@@ -31611,6 +31816,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: openshift-apiserver
 - name: LOGLEVEL
@@ -31646,7 +31853,7 @@ objects:
         containers:
         - name: apiserver
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           env:
           - name: ADDITIONAL_ALLOWED_REGISTRIES
             value: registry.centos.org
@@ -32028,6 +32235,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: openshift-controller-manager
 - name: LOGLEVEL
@@ -32064,7 +32273,7 @@ objects:
         containers:
         - name: c
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command: ["hypershift", "openshift-controller-manager"]
           args:
           - "--config=/etc/origin/master/master-config.yaml"
@@ -32158,7 +32367,9 @@ var _installOpenshiftWebConsoleOperatorInstallYaml = []byte(`apiVersion: templat
 kind: Template
 parameters:
 - name: IMAGE
-  value: openshift/origin:latest
+  value: openshift/origin-hypershift:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   # This namespace must not be changed.
   value: openshift-core-operators
@@ -32184,6 +32395,8 @@ objects:
       kind: OpenShiftWebConsoleConfig
       plural: openshiftwebconsoleconfigs
       singular: openshiftwebconsoleconfig
+    subresources:
+      status: {}
 
 - apiVersion: apps/v1
   kind: Deployment
@@ -32207,7 +32420,7 @@ objects:
         containers:
         - name: operator
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command: ["hypershift", "experimental", "openshift-webconsole-operator"]
           args:
           - "-v=${LOGLEVEL}"
@@ -32231,6 +32444,7 @@ objects:
     version: 3.10.0
     logging:
       level: ${{COMPONENT_LOGLEVEL}}
+    replicas: 1
 `)
 
 func installOpenshiftWebConsoleOperatorInstallYamlBytes() ([]byte, error) {
@@ -32304,6 +32518,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-web-console:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   # This namespace cannot be changed. Only `+"`"+`openshift-web-console`+"`"+` is supported.
   value: openshift-web-console
@@ -32340,7 +32556,7 @@ objects:
         containers:
         - name: webconsole
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command:
           - "/usr/bin/origin-web-console"
           - "--audit-log-path=-"
@@ -32511,6 +32727,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-template-service-broker:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: openshift-template-service-broker
 - name: LOGLEVEL
@@ -32544,7 +32762,7 @@ objects:
         containers:
         - name: c
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command:
           - "/usr/bin/template-service-broker"
           - "start"
@@ -32870,6 +33088,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/builds/test-cds-sourcebuild.json": testExtendedTestdataBuildsTestCdsSourcebuildJson,
 	"test/extended/testdata/builds/test-context-build.json": testExtendedTestdataBuildsTestContextBuildJson,
 	"test/extended/testdata/builds/test-docker-build-pullsecret.json": testExtendedTestdataBuildsTestDockerBuildPullsecretJson,
+	"test/extended/testdata/builds/test-docker-build-quota-optimized.json": testExtendedTestdataBuildsTestDockerBuildQuotaOptimizedJson,
 	"test/extended/testdata/builds/test-docker-build-quota.json": testExtendedTestdataBuildsTestDockerBuildQuotaJson,
 	"test/extended/testdata/builds/test-docker-build.json": testExtendedTestdataBuildsTestDockerBuildJson,
 	"test/extended/testdata/builds/test-docker-no-outputname.json": testExtendedTestdataBuildsTestDockerNoOutputnameJson,
@@ -32898,6 +33117,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/deployments/deployment-example.yaml": testExtendedTestdataDeploymentsDeploymentExampleYaml,
 	"test/extended/testdata/deployments/deployment-history-limit.yaml": testExtendedTestdataDeploymentsDeploymentHistoryLimitYaml,
 	"test/extended/testdata/deployments/deployment-ignores-deployer.yaml": testExtendedTestdataDeploymentsDeploymentIgnoresDeployerYaml,
+	"test/extended/testdata/deployments/deployment-image-resolution-is.yaml": testExtendedTestdataDeploymentsDeploymentImageResolutionIsYaml,
 	"test/extended/testdata/deployments/deployment-image-resolution.yaml": testExtendedTestdataDeploymentsDeploymentImageResolutionYaml,
 	"test/extended/testdata/deployments/deployment-min-ready-seconds.yaml": testExtendedTestdataDeploymentsDeploymentMinReadySecondsYaml,
 	"test/extended/testdata/deployments/deployment-simple.yaml": testExtendedTestdataDeploymentsDeploymentSimpleYaml,
@@ -33333,6 +33553,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"test-cds-sourcebuild.json": &bintree{testExtendedTestdataBuildsTestCdsSourcebuildJson, map[string]*bintree{}},
 					"test-context-build.json": &bintree{testExtendedTestdataBuildsTestContextBuildJson, map[string]*bintree{}},
 					"test-docker-build-pullsecret.json": &bintree{testExtendedTestdataBuildsTestDockerBuildPullsecretJson, map[string]*bintree{}},
+					"test-docker-build-quota-optimized.json": &bintree{testExtendedTestdataBuildsTestDockerBuildQuotaOptimizedJson, map[string]*bintree{}},
 					"test-docker-build-quota.json": &bintree{testExtendedTestdataBuildsTestDockerBuildQuotaJson, map[string]*bintree{}},
 					"test-docker-build.json": &bintree{testExtendedTestdataBuildsTestDockerBuildJson, map[string]*bintree{}},
 					"test-docker-no-outputname.json": &bintree{testExtendedTestdataBuildsTestDockerNoOutputnameJson, map[string]*bintree{}},
@@ -33369,6 +33590,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"deployment-example.yaml": &bintree{testExtendedTestdataDeploymentsDeploymentExampleYaml, map[string]*bintree{}},
 					"deployment-history-limit.yaml": &bintree{testExtendedTestdataDeploymentsDeploymentHistoryLimitYaml, map[string]*bintree{}},
 					"deployment-ignores-deployer.yaml": &bintree{testExtendedTestdataDeploymentsDeploymentIgnoresDeployerYaml, map[string]*bintree{}},
+					"deployment-image-resolution-is.yaml": &bintree{testExtendedTestdataDeploymentsDeploymentImageResolutionIsYaml, map[string]*bintree{}},
 					"deployment-image-resolution.yaml": &bintree{testExtendedTestdataDeploymentsDeploymentImageResolutionYaml, map[string]*bintree{}},
 					"deployment-min-ready-seconds.yaml": &bintree{testExtendedTestdataDeploymentsDeploymentMinReadySecondsYaml, map[string]*bintree{}},
 					"deployment-simple.yaml": &bintree{testExtendedTestdataDeploymentsDeploymentSimpleYaml, map[string]*bintree{}},

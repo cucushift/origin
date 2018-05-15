@@ -5,6 +5,8 @@ metadata:
 parameters:
 - name: IMAGE
   value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
 - name: NAMESPACE
   value: openshift-controller-manager
 - name: LOGLEVEL
@@ -41,7 +43,7 @@ objects:
         containers:
         - name: c
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
           command: ["hypershift", "openshift-controller-manager"]
           args:
           - "--config=/etc/origin/master/master-config.yaml"

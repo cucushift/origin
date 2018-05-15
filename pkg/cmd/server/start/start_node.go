@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -26,15 +24,17 @@ import (
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/master/ports"
 
+	"github.com/openshift/library-go/pkg/crypto"
 	"github.com/openshift/origin/pkg/cmd/server/admin"
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
 	configapilatest "github.com/openshift/origin/pkg/cmd/server/apis/config/latest"
 	"github.com/openshift/origin/pkg/cmd/server/apis/config/validation"
-	"github.com/openshift/origin/pkg/cmd/server/crypto"
+	"github.com/openshift/origin/pkg/cmd/server/apis/config/validation/common"
 	"github.com/openshift/origin/pkg/cmd/server/kubernetes/network"
 	networkoptions "github.com/openshift/origin/pkg/cmd/server/kubernetes/network/options"
 	"github.com/openshift/origin/pkg/cmd/server/kubernetes/node"
 	nodeoptions "github.com/openshift/origin/pkg/cmd/server/kubernetes/node/options"
+	originnode "github.com/openshift/origin/pkg/cmd/server/origin/node"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	utilflags "github.com/openshift/origin/pkg/cmd/util/flags"
 	"github.com/openshift/origin/pkg/version"
@@ -249,7 +249,7 @@ func (o NodeOptions) RunNode() error {
 		}
 	}
 
-	var validationResults validation.ValidationResults
+	var validationResults common.ValidationResults
 	switch {
 	case o.NodeArgs.Components.Calculated().Equal(NewNetworkComponentFlag().Calculated()):
 		if len(nodeConfig.NodeName) == 0 {
@@ -281,7 +281,7 @@ func (o NodeOptions) RunNode() error {
 	}
 
 	if o.NodeArgs.WriteFlagsOnly {
-		return WriteKubeletFlags(*nodeConfig)
+		return originnode.WriteKubeletFlags(*nodeConfig)
 	}
 
 	return StartNode(*nodeConfig, o.NodeArgs.Components)
@@ -427,38 +427,6 @@ func execKubelet(kubeletArgs []string) error {
 	return syscall.Exec(kubeletPath, args, os.Environ())
 }
 
-// safeArgRegexp matches only characters that are known safe. DO NOT add to this list
-// without fully considering whether that new character can be used to break shell escaping
-// rules.
-var safeArgRegexp = regexp.MustCompile(`^[\da-zA-Z\-=_\.,/\:]+$`)
-
-// shellEscapeArg quotes an argument if it contains characters that my cause a shell
-// interpreter to split the single argument into multiple.
-func shellEscapeArg(s string) string {
-	if safeArgRegexp.MatchString(s) {
-		return s
-	}
-	return strconv.Quote(s)
-}
-
-// WriteKubeletFlags writes the correct set of flags to start a Kubelet from the provided node config to
-// stdout, instead of launching anything.
-func WriteKubeletFlags(nodeConfig configapi.NodeConfig) error {
-	kubeletArgs, err := nodeoptions.ComputeKubeletFlags(nodeConfig.KubeletArguments, nodeConfig)
-	if err != nil {
-		return fmt.Errorf("cannot create kubelet args: %v", err)
-	}
-	if err := nodeoptions.CheckFlags(kubeletArgs); err != nil {
-		return err
-	}
-	var outputArgs []string
-	for _, s := range kubeletArgs {
-		outputArgs = append(outputArgs, shellEscapeArg(s))
-	}
-	fmt.Println(strings.Join(outputArgs, " "))
-	return nil
-}
-
 // StartNode launches the node processes.
 func StartNode(nodeConfig configapi.NodeConfig, components *utilflags.ComponentFlag) error {
 	kubeletArgs, err := nodeoptions.ComputeKubeletFlags(nodeConfig.KubeletArguments, nodeConfig)
@@ -484,8 +452,6 @@ func StartNode(nodeConfig configapi.NodeConfig, components *utilflags.ComponentF
 		node.EnsureKubeletAccess()
 		// TODO perform this "ensure" in ansible and skip it entirely.
 		node.EnsureVolumeDir(nodeConfig.VolumeDirectory)
-		// TODO accept an --openshift-config in our fork.  This overwrites the volume creation patch for the node.
-		kubeletapp.ProbeVolumePlugins = node.PatchUpstreamVolumePluginsForLocalQuota(nodeConfig)
 
 		go func() {
 			glog.Fatal(runKubeletInProcess(kubeletArgs))

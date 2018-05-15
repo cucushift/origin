@@ -11,12 +11,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/openshift/origin/pkg/oc/bootstrap/docker/host"
-	kruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -24,47 +22,81 @@ import (
 	"k8s.io/client-go/rest"
 	kclientcmd "k8s.io/client-go/tools/clientcmd"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 
 	"github.com/openshift/origin/pkg/oc/bootstrap"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusteradd/componentinstall"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusterup/kubeapiserver"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusterup/kubelet"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusterup/staticpods"
+	"github.com/openshift/origin/pkg/oc/bootstrap/docker/dockerhelper"
+	"github.com/openshift/origin/pkg/oc/bootstrap/docker/host"
 
 	// install our apis into the legacy scheme
 	_ "github.com/openshift/origin/pkg/api/install"
 )
 
+type staticInstall struct {
+	Location       string
+	ComponentImage string
+}
+
+type componentInstallTemplate struct {
+	ComponentImage string
+	Template       componentinstall.Template
+}
+
 var (
-	// staticPodLocations should only include those pods that *must* be run statically because they
+	// staticPodInstalls should only include those pods that *must* be run statically because they
 	// bring up the services required to run the workload controllers.
 	// etcd, kube-apiserver, kube-controller-manager, kube-scheduler (this is because sig-scheduling is expanding the scheduler responsibilities)
-	staticPodLocations = []string{
-		"install/etcd/etcd.yaml",
-		"install/kube-apiserver/apiserver.yaml",
-		"install/kube-controller-manager/kube-controller-manager.yaml",
-		"install/kube-scheduler/kube-scheduler.yaml",
+	staticPodInstalls = []staticInstall{
+		{
+			Location:       "install/etcd/etcd.yaml",
+			ComponentImage: "control-plane",
+		},
+		{
+			Location:       "install/kube-apiserver/apiserver.yaml",
+			ComponentImage: "hypershift",
+		},
+		{
+			Location:       "install/kube-controller-manager/kube-controller-manager.yaml",
+			ComponentImage: "hyperkube",
+		},
+		{
+			Location:       "install/kube-scheduler/kube-scheduler.yaml",
+			ComponentImage: "hyperkube",
+		},
 	}
 
 	runlevelOneLabel      = map[string]string{"openshift.io/run-level": "1"}
-	runLevelOneComponents = []componentinstall.Template{
+	runLevelOneComponents = []componentInstallTemplate{
 		{
-			Name:            "kube-proxy",
-			Namespace:       "kube-proxy",
-			NamespaceObj:    newNamespaceBytes("kube-proxy", runlevelOneLabel),
-			InstallTemplate: bootstrap.MustAsset("install/kube-proxy/install.yaml"),
+			ComponentImage: "control-plane",
+			Template: componentinstall.Template{
+				Name:            "kube-proxy",
+				Namespace:       "kube-proxy",
+				NamespaceObj:    newNamespaceBytes("kube-proxy", runlevelOneLabel),
+				InstallTemplate: bootstrap.MustAsset("install/kube-proxy/install.yaml"),
+			},
 		},
 		{
-			Name:            "kube-dns",
-			Namespace:       "kube-dns",
-			NamespaceObj:    newNamespaceBytes("kube-dns", runlevelOneLabel),
-			InstallTemplate: bootstrap.MustAsset("install/kube-dns/install.yaml"),
+			ComponentImage: "control-plane",
+			Template: componentinstall.Template{
+				Name:            "kube-dns",
+				Namespace:       "kube-dns",
+				NamespaceObj:    newNamespaceBytes("kube-dns", runlevelOneLabel),
+				InstallTemplate: bootstrap.MustAsset("install/kube-dns/install.yaml"),
+			},
 		},
 		{
-			Name:            "openshift-apiserver",
-			Namespace:       "openshift-apiserver",
-			NamespaceObj:    newNamespaceBytes("openshift-apiserver", runlevelOneLabel),
-			InstallTemplate: bootstrap.MustAsset("install/openshift-apiserver/install.yaml"),
+			ComponentImage: "hypershift",
+			Template: componentinstall.Template{
+				Name:            "openshift-apiserver",
+				Namespace:       "openshift-apiserver",
+				NamespaceObj:    newNamespaceBytes("openshift-apiserver", runlevelOneLabel),
+				InstallTemplate: bootstrap.MustAsset("install/openshift-apiserver/install.yaml"),
+			},
 		},
 	}
 
@@ -74,14 +106,17 @@ var (
 	// in cluster up.
 	// TODO we can take a guess at readiness by making sure that pods in the namespace exist and all pods are healthy
 	// TODO it's not perfect, but its fairly good as a starting point.
-	componentsToInstall = []componentinstall.Template{
+	componentsToInstall = []componentInstallTemplate{
 		{
-			Name:              "openshift-controller-manager",
-			Namespace:         "openshift-controller-manager",
-			NamespaceObj:      newNamespaceBytes("openshift-controller-manager", nil),
-			PrivilegedSANames: []string{"openshift-controller-manager"},
-			RBACTemplate:      bootstrap.MustAsset("install/openshift-controller-manager/install-rbac.yaml"),
-			InstallTemplate:   bootstrap.MustAsset("install/openshift-controller-manager/install.yaml"),
+			ComponentImage: "hypershift",
+			Template: componentinstall.Template{
+				Name:              "openshift-controller-manager",
+				Namespace:         "openshift-controller-manager",
+				NamespaceObj:      newNamespaceBytes("openshift-controller-manager", nil),
+				PrivilegedSANames: []string{"openshift-controller-manager"},
+				RBACTemplate:      bootstrap.MustAsset("install/openshift-controller-manager/install-rbac.yaml"),
+				InstallTemplate:   bootstrap.MustAsset("install/openshift-controller-manager/install.yaml"),
+			},
 		},
 	}
 )
@@ -115,8 +150,8 @@ func (c *ClusterUpConfig) StartSelfHosted(out io.Writer) error {
 		"OPENSHIFT_CONTROLLER_MANAGER_CONFIG_HOST_PATH": configDirs.openshiftControllerConfigDir,
 		"NODE_CONFIG_HOST_PATH":                         configDirs.nodeConfigDir,
 		"KUBEDNS_CONFIG_HOST_PATH":                      configDirs.kubeDNSConfigDir,
+		"OPENSHIFT_PULL_POLICY":                         c.pullPolicy,
 		"LOGLEVEL":                                      fmt.Sprintf("%d", c.ServerLogLevel),
-		"IMAGE":                                         c.openshiftImage(),
 	}
 
 	clientConfigBuilder, err := kclientcmd.LoadFromFile(filepath.Join(c.LocalDirFor(kubeapiserver.KubeAPIServerDirName), "admin.kubeconfig"))
@@ -132,24 +167,23 @@ func (c *ClusterUpConfig) StartSelfHosted(out io.Writer) error {
 
 	clientConfig.Host = c.ServerIP + ":8443"
 	// wait for the apiserver to be ready
-	glog.Info("Waiting for the kube-apiserver to be ready.")
+	glog.Info("Waiting for the kube-apiserver to be ready ...")
 	if err := waitForHealthyKubeAPIServer(clientConfig); err != nil {
 		return err
 	}
 
-	err = componentinstall.InstallTemplates(
+	err = installComponentTemplates(
 		runLevelOneComponents,
-		c.openshiftImage(),
+		c.ImageTemplate.Format,
 		c.BaseDir,
 		templateSubstitutionValues,
 		c.GetDockerClient(),
-		c.GetLogDir(),
 	)
 	if err != nil {
 		return err
 	}
 
-	installContext, err := componentinstall.NewComponentInstallContext(c.openshiftImage(), c.imageFormat(), c.BaseDir, c.ServerLogLevel)
+	installContext, err := componentinstall.NewComponentInstallContext(c.cliImage(), c.imageFormat(), c.pullPolicy, c.BaseDir, c.ServerLogLevel)
 	if err != nil {
 		return err
 	}
@@ -180,13 +214,12 @@ func (c *ClusterUpConfig) StartSelfHosted(out io.Writer) error {
 
 	go watchAPIServices(aggregatorClient)
 
-	err = componentinstall.InstallTemplates(
+	err = installComponentTemplates(
 		componentsToInstall,
-		c.openshiftImage(),
+		c.ImageTemplate.Format,
 		c.BaseDir,
 		templateSubstitutionValues,
 		c.GetDockerClient(),
-		c.GetLogDir(),
 	)
 	if err != nil {
 		return err
@@ -309,23 +342,32 @@ func (c *ClusterUpConfig) BuildConfig() (*configDirs, error) {
 		}
 
 	}
+
 	substitutions := map[string]string{
 		"/path/to/master/config-dir":              configs.masterConfigDir,
 		"/path/to/openshift-apiserver/config-dir": configs.openshiftAPIServerConfigDir,
 		"ETCD_VOLUME":                             "emptyDir:\n",
-		"openshift/origin-control-plane:latest":   c.openshiftImage(),
+		"OPENSHIFT_PULL_POLICY":                   c.pullPolicy,
 	}
+
 	if len(c.HostDataDir) > 0 {
 		substitutions["ETCD_VOLUME"] = `hostPath:
       path: ` + c.HostDataDir + "\n"
 	}
 
 	glog.V(2).Infof("Creating static pod definitions in %q", configs.podManifestDir)
-	for _, staticPodLocation := range staticPodLocations {
-		if err := staticpods.UpsertStaticPod(staticPodLocation, substitutions, configs.podManifestDir); err != nil {
+	for _, staticPod := range staticPodInstalls {
+		if len(staticPod.ComponentImage) > 0 {
+			substitutions["IMAGE"] = c.ImageTemplate.ExpandOrDie(staticPod.ComponentImage)
+		} else {
+			delete(substitutions, "IMAGE")
+		}
+		glog.V(3).Infof("Substitutions: %#v", substitutions)
+		if err := staticpods.UpsertStaticPod(staticPod.Location, substitutions, configs.podManifestDir); err != nil {
 			return nil, err
 		}
 	}
+
 	if c.isRemoteDocker {
 		configs.podManifestDir, err = c.copyToRemote(configs.podManifestDir, kubelet.PodManifestDirName)
 		if err != nil {
@@ -366,7 +408,8 @@ func (c *ClusterUpConfig) makeNodeConfig(masterConfigDir string) (string, error)
 
 	container := kubelet.NewNodeStartConfig()
 	container.ContainerBinds = append(container.ContainerBinds, masterConfigDir+":/var/lib/origin/openshift.local.masterconfig:z")
-	container.NodeImage = c.openshiftImage()
+	container.CLIImage = c.cliImage()
+	container.NodeImage = c.nodeImage()
 	container.Args = []string{
 		fmt.Sprintf("--certificate-authority=%s", "/var/lib/origin/openshift.local.masterconfig/ca.crt"),
 		fmt.Sprintf("--dns-bind-address=0.0.0.0:%d", c.DNSPort),
@@ -393,7 +436,7 @@ func (c *ClusterUpConfig) makeNodeConfig(masterConfigDir string) (string, error)
 func (c *ClusterUpConfig) makeKubeletFlags(out io.Writer, nodeConfigDir string) ([]string, error) {
 	container := kubelet.NewKubeletStartFlags()
 	container.ContainerBinds = append(container.ContainerBinds, nodeConfigDir+":/var/lib/origin/openshift.local.config/node:z")
-	container.NodeImage = c.openshiftImage()
+	container.NodeImage = c.nodeImage()
 	container.UseSharedVolume = !c.UseNsenterMount
 
 	kubeletFlags, err := container.MakeKubeletFlags(c.GetDockerClient(), c.BaseDir)
@@ -473,7 +516,7 @@ func (c *ClusterUpConfig) startKubelet(out io.Writer, masterConfigDir, nodeConfi
 	// /sys/devices/virtual/net/vethXXX/brport/hairpin_mode, so make this rw, not ro.
 	container.ContainerBinds = append(container.ContainerBinds, "/sys/devices/virtual/net:/sys/devices/virtual/net:rw")
 
-	container.NodeImage = c.openshiftImage()
+	container.NodeImage = c.nodeImage()
 	container.HTTPProxy = c.HTTPProxy
 	container.HTTPSProxy = c.HTTPSProxy
 	container.NoProxy = c.NoProxy
@@ -504,6 +547,7 @@ func waitForHealthyKubeAPIServer(clientConfig *rest.Config) error {
 	var healthzContent string
 	// If apiserver is not running we should wait for some time and fail only then. This is particularly
 	// important when we start apiserver and controller manager at the same time.
+	var lastResponseError error
 	err := wait.PollImmediate(time.Second, 5*time.Minute, func() (bool, error) {
 		discoveryClient, err := discovery.NewDiscoveryClientForConfig(clientConfig)
 		if err != nil {
@@ -514,6 +558,7 @@ func waitForHealthyKubeAPIServer(clientConfig *rest.Config) error {
 		resp := discoveryClient.RESTClient().Get().AbsPath("/healthz").Do().StatusCode(&healthStatus)
 		if resp.Error() != nil {
 			glog.V(4).Infof("Server isn't healthy yet.  Waiting a little while. %v", resp.Error())
+			lastResponseError = resp.Error()
 			return false, nil
 		}
 		content, _ := resp.Raw()
@@ -526,7 +571,7 @@ func waitForHealthyKubeAPIServer(clientConfig *rest.Config) error {
 		return true, nil
 	})
 	if err != nil {
-		glog.Error(healthzContent)
+		glog.Errorf("API server error: %v (%s)", lastResponseError, healthzContent)
 	}
 
 	return err
@@ -573,4 +618,22 @@ func newNamespaceBytes(namespace string, labels map[string]string) []byte {
 		panic(err)
 	}
 	return output
+}
+
+func installComponentTemplates(templates []componentInstallTemplate, imageFormat, baseDir string, params map[string]string, dockerClient dockerhelper.Interface) error {
+	components := []componentinstall.Component{}
+	cliImage := strings.Replace(imageFormat, "${component}", "cli", -1)
+	for _, template := range templates {
+		paramsWithImage := make(map[string]string)
+		for k, v := range params {
+			paramsWithImage[k] = v
+		}
+		if len(template.ComponentImage) > 0 {
+			paramsWithImage["IMAGE"] = strings.Replace(imageFormat, "${component}", template.ComponentImage, -1)
+		}
+
+		components = append(components, template.Template.MakeReady(cliImage, baseDir, paramsWithImage))
+	}
+
+	return componentinstall.InstallComponents(components, dockerClient)
 }

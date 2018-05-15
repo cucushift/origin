@@ -131,20 +131,20 @@ func TestClusterReaderCoverage(t *testing.T) {
 	}
 
 	escalatingResources := map[schema.GroupResource]bool{
-		oauthapi.Resource("oauthauthorizetokens"):       true,
-		oauthapi.LegacyResource("oauthauthorizetokens"): true,
-		oauthapi.Resource("oauthaccesstokens"):          true,
-		oauthapi.LegacyResource("oauthaccesstokens"):    true,
-		oauthapi.Resource("oauthclients"):               true,
-		oauthapi.LegacyResource("oauthclients"):         true,
-		imageapi.Resource("imagestreams/secrets"):       true,
-		imageapi.LegacyResource("imagestreams/secrets"): true,
-		kapi.Resource("secrets"):                        true,
-		kapi.Resource("pods/exec"):                      true,
-		kapi.Resource("pods/proxy"):                     true,
-		kapi.Resource("pods/portforward"):               true,
-		kapi.Resource("nodes/proxy"):                    true,
-		kapi.Resource("services/proxy"):                 true,
+		oauthapi.Resource("oauthauthorizetokens"):     true,
+		oauthapi.Resource("oauthaccesstokens"):        true,
+		oauthapi.Resource("oauthclients"):             true,
+		imageapi.Resource("imagestreams/secrets"):     true,
+		kapi.Resource("secrets"):                      true,
+		kapi.Resource("pods/exec"):                    true,
+		kapi.Resource("pods/proxy"):                   true,
+		kapi.Resource("pods/portforward"):             true,
+		kapi.Resource("nodes/proxy"):                  true,
+		kapi.Resource("services/proxy"):               true,
+		{Group: "", Resource: "oauthauthorizetokens"}: true,
+		{Group: "", Resource: "oauthaccesstokens"}:    true,
+		{Group: "", Resource: "oauthclients"}:         true,
+		{Group: "", Resource: "imagestreams/secrets"}: true,
 	}
 
 	readerRole, err := authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization().ClusterRoles().Get(bootstrappolicy.ClusterReaderRoleName, metav1.GetOptions{})
@@ -171,27 +171,27 @@ func TestClusterReaderCoverage(t *testing.T) {
 	// remove resources without read APIs
 	nonreadingResources := []schema.GroupResource{
 		buildapi.Resource("buildconfigs/instantiatebinary"),
-		buildapi.LegacyResource("buildconfigs/instantiatebinary"),
 		buildapi.Resource("buildconfigs/instantiate"),
-		buildapi.LegacyResource("buildconfigs/instantiate"),
 		buildapi.Resource("builds/clone"),
-		buildapi.LegacyResource("builds/clone"),
 		oappsapi.Resource("deploymentconfigrollbacks"),
-		oappsapi.LegacyResource("deploymentconfigrollbacks"),
 		oappsapi.Resource("generatedeploymentconfigs"),
-		oappsapi.LegacyResource("generatedeploymentconfigs"),
 		oappsapi.Resource("deploymentconfigs/rollback"),
-		oappsapi.LegacyResource("deploymentconfigs/rollback"),
 		oappsapi.Resource("deploymentconfigs/instantiate"),
-		oappsapi.LegacyResource("deploymentconfigs/instantiate"),
 		imageapi.Resource("imagestreamimports"),
-		imageapi.LegacyResource("imagestreamimports"),
 		imageapi.Resource("imagestreammappings"),
-		imageapi.LegacyResource("imagestreammappings"),
 		extensionsapi.Resource("deployments/rollback"),
 		appsapi.Resource("deployments/rollback"),
 		kapi.Resource("pods/attach"),
 		kapi.Resource("namespaces/finalize"),
+		{Group: "", Resource: "buildconfigs/instantiatebinary"},
+		{Group: "", Resource: "buildconfigs/instantiate"},
+		{Group: "", Resource: "builds/clone"},
+		{Group: "", Resource: "deploymentconfigrollbacks"},
+		{Group: "", Resource: "generatedeploymentconfigs"},
+		{Group: "", Resource: "deploymentconfigs/rollback"},
+		{Group: "", Resource: "deploymentconfigs/instantiate"},
+		{Group: "", Resource: "imagestreamimports"},
+		{Group: "", Resource: "imagestreammappings"},
 	}
 	for _, resource := range nonreadingResources {
 		delete(allResources, resource)
@@ -376,6 +376,7 @@ var globalDeploymentConfigGetterUsers = sets.NewString(
 	"system:serviceaccount:openshift-infra:image-trigger-controller",
 	"system:serviceaccount:openshift-infra:deploymentconfig-controller",
 	"system:serviceaccount:openshift-infra:template-instance-controller",
+	"system:serviceaccount:openshift-infra:template-instance-finalizer-controller",
 	"system:serviceaccount:openshift-infra:unidling-controller",
 )
 
@@ -621,12 +622,13 @@ func TestAuthorizationResourceAccessReview(t *testing.T) {
 				Users:           sets.NewString("edgar"),
 				Groups:          sets.NewString(),
 				Namespace:       "mallet-project",
-				EvaluationError: `[clusterrole.rbac.authorization.k8s.io "admin" not found, clusterrole.rbac.authorization.k8s.io "admin" not found]`,
+				EvaluationError: `[clusterrole.rbac.authorization.k8s.io "admin" not found, clusterrole.rbac.authorization.k8s.io "admin" not found, clusterrole.rbac.authorization.k8s.io "admin" not found]`,
 			},
 		}
 		test.response.Users.Insert(globalClusterReaderUsers.List()...)
 		test.response.Users.Insert(globalDeploymentConfigGetterUsers.List()...)
 		test.response.Users.Delete("system:serviceaccount:openshift-infra:template-instance-controller")
+		test.response.Users.Delete("system:serviceaccount:openshift-infra:template-instance-finalizer-controller")
 		test.response.Groups.Insert(globalClusterReaderGroups.List()...)
 		test.run(t)
 	}
@@ -1343,7 +1345,7 @@ func TestOldLocalSubjectAccessReviewEndpoint(t *testing.T) {
 
 	// install the legacy types into the client for decoding
 	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("ClusterRole", "ClusterRoleBinding", "ClusterPolicy", "ClusterPolicyBinding", "ResourceAccessReviewResponse", "SubjectAccessReviewResponse"),
+		sets.NewString("ClusterRole", "ClusterRoleBinding", "ResourceAccessReviewResponse", "SubjectAccessReviewResponse"),
 		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
 	)
 
@@ -1486,7 +1488,7 @@ func TestOldLocalResourceAccessReviewEndpoint(t *testing.T) {
 
 	// install the legacy types into the client for decoding
 	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("ClusterRole", "ClusterRoleBinding", "ClusterPolicy", "ClusterPolicyBinding", "ResourceAccessReviewResponse", "SubjectAccessReviewResponse"),
+		sets.NewString("ClusterRole", "ClusterRoleBinding", "ResourceAccessReviewResponse", "SubjectAccessReviewResponse"),
 		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
 	)
 
@@ -1510,7 +1512,7 @@ func TestOldLocalResourceAccessReviewEndpoint(t *testing.T) {
 
 		expectedResponse := &authorizationapi.ResourceAccessReviewResponse{
 			Namespace: namespace,
-			Users:     sets.NewString("harold", "system:serviceaccount:kube-system:clusterrole-aggregation-controller", "system:serviceaccount:kube-system:generic-garbage-collector", "system:serviceaccount:kube-system:namespace-controller", "system:serviceaccount:openshift-infra:template-instance-controller", "system:serviceaccount:hammer-project:builder", "system:admin", "system:serviceaccount:openshift-infra:default-rolebindings-controller"),
+			Users:     sets.NewString("harold", "system:serviceaccount:kube-system:clusterrole-aggregation-controller", "system:serviceaccount:kube-system:generic-garbage-collector", "system:serviceaccount:kube-system:namespace-controller", "system:serviceaccount:openshift-infra:template-instance-controller", "system:serviceaccount:openshift-infra:template-instance-finalizer-controller", "system:serviceaccount:hammer-project:builder", "system:admin", "system:serviceaccount:openshift-infra:default-rolebindings-controller"),
 			Groups:    sets.NewString("system:cluster-admins", "system:masters", "system:cluster-readers", "system:serviceaccounts:hammer-project"),
 		}
 		if (actualResponse.Namespace != expectedResponse.Namespace) ||
@@ -1541,7 +1543,7 @@ func TestOldLocalResourceAccessReviewEndpoint(t *testing.T) {
 
 		expectedResponse := &authorizationapi.ResourceAccessReviewResponse{
 			Namespace: namespace,
-			Users:     sets.NewString("harold", "system:serviceaccount:kube-system:clusterrole-aggregation-controller", "system:serviceaccount:kube-system:generic-garbage-collector", "system:serviceaccount:kube-system:namespace-controller", "system:serviceaccount:openshift-infra:template-instance-controller", "system:serviceaccount:hammer-project:builder", "system:admin", "system:serviceaccount:openshift-infra:default-rolebindings-controller"),
+			Users:     sets.NewString("harold", "system:serviceaccount:kube-system:clusterrole-aggregation-controller", "system:serviceaccount:kube-system:generic-garbage-collector", "system:serviceaccount:kube-system:namespace-controller", "system:serviceaccount:openshift-infra:template-instance-controller", "system:serviceaccount:openshift-infra:template-instance-finalizer-controller", "system:serviceaccount:hammer-project:builder", "system:admin", "system:serviceaccount:openshift-infra:default-rolebindings-controller"),
 			Groups:    sets.NewString("system:cluster-admins", "system:masters", "system:cluster-readers", "system:serviceaccounts:hammer-project"),
 		}
 		if (actualResponse.Namespace != expectedResponse.Namespace) ||

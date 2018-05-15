@@ -70,13 +70,14 @@ import (
 	rbacrest "k8s.io/kubernetes/pkg/registry/rbac/rest"
 	kversion "k8s.io/kubernetes/pkg/version"
 
+	"github.com/openshift/library-go/pkg/crypto"
 	"github.com/openshift/origin/pkg/api"
 	oauthorizer "github.com/openshift/origin/pkg/authorization/authorizer"
 	"github.com/openshift/origin/pkg/authorization/authorizer/scope"
 	"github.com/openshift/origin/pkg/cmd/flagtypes"
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
-	"github.com/openshift/origin/pkg/cmd/server/crypto"
 	"github.com/openshift/origin/pkg/cmd/server/election"
+	nodeclient "github.com/openshift/origin/pkg/cmd/server/kubernetes/node/client"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	cmdflags "github.com/openshift/origin/pkg/cmd/util/flags"
 	oauthutil "github.com/openshift/origin/pkg/oauth/util"
@@ -504,7 +505,7 @@ func buildKubeApiserverConfig(
 
 			EventTTL: apiserverOptions.EventTTL,
 
-			KubeletClientConfig: *configapi.GetKubeletClientConfig(masterConfig),
+			KubeletClientConfig: *nodeclient.GetKubeletClientConfig(masterConfig),
 
 			EnableLogsSupport:     false, // don't expose server logs
 			EnableCoreControllers: true,

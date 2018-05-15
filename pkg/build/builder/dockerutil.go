@@ -214,13 +214,14 @@ func buildDirectImage(dir string, ignoreFailures bool, opts *docker.BuildImageOp
 	e.IgnoreUnrecognizedInstructions = ignoreFailures
 	e.StrictVolumeOwnership = !ignoreFailures
 	e.HostConfig = &docker.HostConfig{
-		NetworkMode: opts.NetworkMode,
-		CPUShares:   opts.CPUShares,
-		CPUPeriod:   opts.CPUPeriod,
-		CPUSetCPUs:  opts.CPUSetCPUs,
-		CPUQuota:    opts.CPUQuota,
-		Memory:      opts.Memory,
-		MemorySwap:  opts.Memswap,
+		NetworkMode:  opts.NetworkMode,
+		CPUShares:    opts.CPUShares,
+		CPUPeriod:    opts.CPUPeriod,
+		CPUSetCPUs:   opts.CPUSetCPUs,
+		CPUQuota:     opts.CPUQuota,
+		CgroupParent: opts.CgroupParent,
+		Memory:       opts.Memory,
+		MemorySwap:   opts.Memswap,
 	}
 
 	if len(opts.BuildBinds) > 0 {
@@ -297,18 +298,13 @@ func buildDirectImage(dir string, ignoreFailures bool, opts *docker.BuildImageOp
 			return err
 		}
 		stages := imagebuilder.NewStages(node, b)
-		var stageExecutor *dockerclient.ClientExecutor
-		for _, stage := range stages {
-			stageExecutor = e.WithName(stage.Name)
-			if err := stageExecutor.Prepare(stage.Builder, stage.Node, ""); err != nil {
-				return err
-			}
-			if err := stageExecutor.Execute(stage.Builder, stage.Node); err != nil {
-				return err
-			}
-		}
-		return stageExecutor.Commit(stages[len(stages)-1].Builder)
 
+		lastExecutor, err := e.Stages(b, stages, "")
+		if err != nil {
+			return err
+		}
+
+		return lastExecutor.Commit(stages[len(stages)-1].Builder)
 	})
 }
 

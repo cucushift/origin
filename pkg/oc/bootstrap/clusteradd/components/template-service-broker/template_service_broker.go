@@ -30,7 +30,7 @@ func (c *TemplateServiceBrokerComponentOptions) Name() string {
 	return "openshift-template-service-broker"
 }
 
-func (c *TemplateServiceBrokerComponentOptions) Install(dockerClient dockerhelper.Interface, logdir string) error {
+func (c *TemplateServiceBrokerComponentOptions) Install(dockerClient dockerhelper.Interface) error {
 	kubeAdminClient, err := kubernetes.NewForConfig(c.InstallContext.ClusterAdminClientConfig())
 	if err != nil {
 		return errors.NewError("cannot obtain API clients").WithCause(err)
@@ -41,9 +41,9 @@ func (c *TemplateServiceBrokerComponentOptions) Install(dockerClient dockerhelpe
 	imageTemplate.Latest = false
 
 	params := map[string]string{
-		"IMAGE":     imageTemplate.ExpandOrDie("template-service-broker"),
-		"LOGLEVEL":  fmt.Sprintf("%d", c.InstallContext.ComponentLogLevel()),
-		"NAMESPACE": tsbNamespace,
+		"OPENSHIFT_TSB_IMAGE": imageTemplate.ExpandOrDie("template-service-broker"),
+		"LOGLEVEL":            fmt.Sprintf("%d", c.InstallContext.ComponentLogLevel()),
+		"NAMESPACE":           tsbNamespace,
 	}
 	glog.V(2).Infof("instantiating template service broker template with parameters %v", params)
 
@@ -71,7 +71,7 @@ func (c *TemplateServiceBrokerComponentOptions) Install(dockerClient dockerhelpe
 	err = component.MakeReady(
 		c.InstallContext.ClientImage(),
 		c.InstallContext.BaseDir(),
-		params).Install(dockerClient, logdir)
+		params).Install(dockerClient)
 
 	if err != nil {
 		return err
@@ -81,10 +81,9 @@ func (c *TemplateServiceBrokerComponentOptions) Install(dockerClient dockerhelpe
 	// the service catalog may not be here, but as a best effort try to register
 	register_template_service_broker.RegisterTemplateServiceBroker(
 		dockerClient,
-		c.InstallContext.ClientImage(),
+		c.InstallContext.ImageFormat(),
 		c.InstallContext.BaseDir(),
 		masterConfigDir,
-		logdir,
 	)
 	return nil
 }

@@ -258,10 +258,10 @@ var _ = g.Describe("[Feature:Builds][Slow] openshift pipeline build", func() {
 
 				err := oc.Run("new-project").Args(namespace2).Execute()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				defer oc.Run("delete").Args("project", namespace2).Execute()
 				err = oc.Run("new-project").Args(namespace3).Execute()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				defer oc.Run("delete").Args("project", namespace3).Execute()
+				// no calls to delete these two projects here; leads to timing
+				// issues with the framework deleting all namespaces
 
 				g.By("set up policy for jenkins jobs in " + namespace2)
 				err = oc.Run("policy").Args("add-role-to-user", "edit", "system:serviceaccount:"+namespace+":jenkins", "-n", namespace2).Execute()
@@ -882,10 +882,10 @@ var _ = g.Describe("[Feature:Builds][Slow] openshift pipeline build", func() {
 							case err != nil:
 								errs <- fmt.Errorf("error getting build: %s", err)
 								return
-							case exutil.CheckBuildFailedFn(build):
+							case exutil.CheckBuildFailed(build):
 								errs <- nil
 								return
-							case exutil.CheckBuildSuccessFn(build):
+							case exutil.CheckBuildSuccess(build):
 								br.BuildSuccess = true
 								errs <- nil
 								return

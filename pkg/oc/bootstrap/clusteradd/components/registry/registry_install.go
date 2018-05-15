@@ -4,6 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
+
+	"github.com/golang/glog"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusteradd/componentinstall"
 	"github.com/openshift/origin/pkg/oc/bootstrap/clusterup/kubeapiserver"
@@ -11,9 +18,6 @@ import (
 	"github.com/openshift/origin/pkg/oc/bootstrap/docker/host"
 	"github.com/openshift/origin/pkg/oc/bootstrap/docker/run"
 	"github.com/openshift/origin/pkg/oc/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -31,7 +35,25 @@ func (r *RegistryComponentOptions) Name() string {
 	return "openshift-image-registry"
 }
 
-func (r *RegistryComponentOptions) Install(dockerClient dockerhelper.Interface, logdir string) error {
+// ensureRemoteRegistryStoragePermissions ensures the remote host directory for registry storage have write access permissions
+// so the registry can successfully write data into it.
+// TODO: This is a remote docker snowflake
+func (r *RegistryComponentOptions) ensureRemoteRegistryStoragePermissions(dir string, dockerClient dockerhelper.Interface) error {
+	glog.V(5).Infof("Ensuring the write permissions in remote directory %s", dir)
+	_, rc, err := run.NewRunHelper(dockerhelper.NewHelper(dockerClient)).New().
+		Image(r.InstallContext.ClientImage()).
+		DiscardContainer().
+		Privileged().
+		Bind(fmt.Sprintf("%s:/pv", dir)).
+		Entrypoint("/bin/bash").
+		Command("-c", "mkdir -p /pv/registry && chmod 0777 /pv/registry").Run()
+	if rc != 0 {
+		return fmt.Errorf("command returning non-zero exit code: %d", rc)
+	}
+	return err
+}
+
+func (r *RegistryComponentOptions) Install(dockerClient dockerhelper.Interface) error {
 	kubeAdminClient, err := kubernetes.NewForConfig(r.InstallContext.ClusterAdminClientConfig())
 	if err != nil {
 		return err
@@ -56,6 +78,16 @@ func (r *RegistryComponentOptions) Install(dockerClient dockerhelper.Interface, 
 		baseDir = path.Join(host.RemoteHostOriginDir, r.InstallContext.BaseDir())
 	}
 
+	registryStorageDir := path.Join(baseDir, "openshift.local.pv")
+
+	// If docker is on remote host, ensure the permissions for registry
+	if len(os.Getenv("DOCKER_HOST")) > 0 {
+		if err := r.ensureRemoteRegistryStoragePermissions(registryStorageDir, dockerClient); err != nil {
+			return errors.NewError("error ensuring remote host registry directory permissions").WithCause(err)
+		}
+	}
+	registryStorageDir = path.Join(registryStorageDir, "registry")
+
 	masterConfigDir := path.Join(baseDir, kubeapiserver.KubeAPIServerDirName)
 	flags := []string{
 		"adm",
@@ -67,14 +99,14 @@ func (r *RegistryComponentOptions) Install(dockerClient dockerhelper.Interface, 
 		fmt.Sprintf("--cluster-ip=%s", RegistryServiceClusterIP),
 		fmt.Sprintf("--config=%s", path.Join(masterConfigDir, "admin.kubeconfig")),
 		fmt.Sprintf("--images=%s", r.InstallContext.ImageFormat()),
-		fmt.Sprintf("--mount-host=%s", path.Join(r.InstallContext.BaseDir(), "openshift.local.pv", "registry")),
+		fmt.Sprintf("--mount-host=%s", registryStorageDir),
 	}
 	_, rc, err := imageRunHelper.Image(r.InstallContext.ClientImage()).
 		Privileged().
 		DiscardContainer().
 		HostNetwork().
 		HostPid().
-		SaveContainerLogs(r.Name(), logdir).
+		SaveContainerLogs(r.Name(), filepath.Join(r.InstallContext.BaseDir(), "logs")).
 		Bind(masterConfigDir + ":" + masterConfigDir).
 		Entrypoint("oc").
 		Command(flags...).Run()
